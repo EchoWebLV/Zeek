@@ -1,0 +1,154 @@
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import { initGemini, generatePrivacyTweet, enhanceImagePrompt } from "./services/gemini.js";
+import { initImagen, generateImage } from "./services/imagen.js";
+import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
+
+// Load environment variables
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.join(__dirname, "..");
+
+// Configuration
+const CONFIG = {
+  googleApiKey: process.env.GOOGLE_AI_API_KEY,
+  twitter: {
+    apiKey: process.env.X_API_KEY,
+    apiSecret: process.env.X_API_SECRET,
+    accessToken: process.env.X_ACCESS_TOKEN,
+    accessSecret: process.env.X_ACCESS_SECRET,
+  },
+  isLocalMode: process.argv.includes("--local") || process.env.MODE === "local",
+  testDir: path.join(PROJECT_ROOT, "test"),
+};
+
+/**
+ * Main bot function - generates and posts privacy content
+ */
+async function generateAndPost() {
+  console.log("\n" + "=".repeat(60));
+  console.log("🔐 ZEKE Privacy Bot - Starting Generation");
+  console.log("=".repeat(60));
+  console.log(`Mode: ${CONFIG.isLocalMode ? "LOCAL (test)" : "PRODUCTION"}`);
+  console.log("");
+
+  // Validate API key
+  if (!CONFIG.googleApiKey) {
+    console.error("❌ Error: GOOGLE_AI_API_KEY not set in environment variables");
+    process.exit(1);
+  }
+
+  // Initialize services
+  console.log("📡 Initializing services...");
+  initGemini(CONFIG.googleApiKey);
+  initImagen(CONFIG.googleApiKey);
+
+  if (!CONFIG.isLocalMode) {
+    initTwitter(CONFIG.twitter);
+    const isAuthenticated = await verifyCredentials();
+    if (!isAuthenticated) {
+      console.error("❌ Error: Twitter authentication failed");
+      process.exit(1);
+    }
+  }
+
+  try {
+    // Step 1: Generate tweet text with Gemini
+    console.log("\n📝 Generating tweet with Gemini 3.0...");
+    const tweetData = await generatePrivacyTweet();
+    console.log("   ✅ Tweet generated!");
+    console.log(`   Topic: ${tweetData.topic.theme}`);
+    console.log(`   Tweet: "${tweetData.text}"`);
+    console.log(`   Length: ${tweetData.text.length}/280 chars`);
+
+    // Step 2: Enhance the image prompt
+    const imagePrompt = enhanceImagePrompt(tweetData.imagePrompt, tweetData.topic);
+    console.log("\n🎨 Image prompt:", imagePrompt.substring(0, 100) + "...");
+
+    // Step 3: Generate image with Imagen
+    let imageBuffer;
+    let imagePath = null;
+
+    if (CONFIG.isLocalMode) {
+      // Create test directory and save files
+      if (!fs.existsSync(CONFIG.testDir)) {
+        fs.mkdirSync(CONFIG.testDir, { recursive: true });
+      }
+
+      // Find the next post number
+      const existingFiles = fs.readdirSync(CONFIG.testDir);
+      const postNumbers = existingFiles
+        .filter(f => f.startsWith("post") && f.endsWith(".jpg"))
+        .map(f => parseInt(f.match(/post(\d+)/)?.[1] || 0));
+      const nextNumber = Math.max(0, ...postNumbers) + 1;
+
+      imagePath = path.join(CONFIG.testDir, `post${nextNumber}.jpg`);
+      const textPath = path.join(CONFIG.testDir, `post${nextNumber}.txt`);
+
+      imageBuffer = await generateImage(imagePrompt, imagePath);
+
+      // Save tweet text
+      const textContent = `Topic: ${tweetData.topic.theme}
+Tweet: ${tweetData.text}
+Length: ${tweetData.text.length}/280
+
+Image Prompt: ${imagePrompt}
+
+Generated: ${new Date().toISOString()}`;
+      
+      fs.writeFileSync(textPath, textContent);
+      console.log(`   ✅ Text saved to: ${textPath}`);
+
+      console.log("\n" + "=".repeat(60));
+      console.log("✨ LOCAL TEST COMPLETE");
+      console.log("=".repeat(60));
+      console.log(`📁 Output saved to: ${CONFIG.testDir}`);
+      console.log(`   - ${path.basename(imagePath)}`);
+      console.log(`   - ${path.basename(textPath)}`);
+    } else {
+      // Production mode - generate and post
+      imageBuffer = await generateImage(imagePrompt);
+
+      // Step 4: Post to X
+      console.log("\n🚀 Posting to X...");
+      const result = await postTweetWithImage(tweetData.text, imageBuffer);
+
+      console.log("\n" + "=".repeat(60));
+      console.log("✨ PRODUCTION POST COMPLETE");
+      console.log("=".repeat(60));
+      console.log(`Tweet ID: ${result.data.id}`);
+      console.log(`URL: https://x.com/i/status/${result.data.id}`);
+    }
+
+    return {
+      success: true,
+      tweet: tweetData.text,
+      topic: tweetData.topic.theme,
+      imagePath: imagePath,
+    };
+  } catch (error) {
+    console.error("\n❌ Error during generation:", error);
+    throw error;
+  }
+}
+
+/**
+ * Run the bot
+ */
+async function main() {
+  try {
+    await generateAndPost();
+  } catch (error) {
+    console.error("Fatal error:", error);
+    process.exit(1);
+  }
+}
+
+// Execute
+main();
+
