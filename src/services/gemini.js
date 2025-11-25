@@ -107,15 +107,15 @@ Include the date if possible.`,
       contents: `Based on this news:
 ${newsContext}
 
-Write a detailed post with TWO PARAGRAPHS:
-- First paragraph: What happened (the news) - be specific with names, numbers, dates
-- Second paragraph: Why it matters for privacy/ZK technology - provide insight
+Write an accessible post with TWO PARAGRAPHS (400-600 chars total):
+- First paragraph: What happened - the key facts, explained simply
+- Second paragraph: Why it matters - what this means for privacy tech
 
 RULES:
-- NO character limit - be thorough and insightful
+- Explain any technical terms simply
 - NO hashtags, NO emojis
-- Be specific about the actual news
-- Sound like a knowledgeable insider breaking news
+- Sound excited but not overly technical
+- Make it interesting for newcomers AND experts
 
 Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
 
@@ -170,8 +170,9 @@ export async function generatePrivacyTweet() {
 TOPIC: ${topic.theme}
 CONTEXT: ${topic.context}
 
-Write a compelling post with TWO PARAGRAPHS (separated by blank line). 
-Be thorough and insightful - no character limit. No hashtags, no emojis.
+Write a clear, accessible post with TWO PARAGRAPHS (400-600 chars total).
+Explain concepts simply - like talking to a smart friend who's new to crypto.
+No hashtags, no emojis.
 Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
 
 JSON format:
