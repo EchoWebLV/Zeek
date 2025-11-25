@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initGemini, generatePrivacyTweet, enhanceImagePrompt } from "./services/gemini.js";
+import { initGemini, generatePrivacyTweet, generateZKNewsPost, shouldBeNewsPost, enhanceImagePrompt } from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
 
@@ -58,13 +58,37 @@ async function generateAndPost() {
   }
 
   try {
+    // Get next post number to determine if this should be a news post
+    let nextPostNumber = 1;
+    if (fs.existsSync(CONFIG.testDir)) {
+      const existingFiles = fs.readdirSync(CONFIG.testDir);
+      const postNumbers = existingFiles
+        .filter(f => f.startsWith("post") && f.endsWith(".jpg"))
+        .map(f => parseInt(f.match(/post(\d+)/)?.[1] || 0));
+      nextPostNumber = Math.max(0, ...postNumbers) + 1;
+    }
+    
+    // Every 2nd post is a news post (posts 2, 4, 6, etc.)
+    const isNewsPost = nextPostNumber % 2 === 0;
+    
     // Step 1: Generate tweet text with Gemini
-    console.log("\n📝 Generating tweet with Gemini 3.0...");
-    const tweetData = await generatePrivacyTweet();
-    console.log("   ✅ Tweet generated!");
+    let tweetData;
+    if (isNewsPost) {
+      console.log("\n📰 Generating ZK NEWS post with Google Search...");
+      tweetData = await generateZKNewsPost();
+      console.log("   ✅ News post generated!");
+    } else {
+      console.log("\n📝 Generating tweet with Gemini 3.0...");
+      tweetData = await generatePrivacyTweet();
+      console.log("   ✅ Tweet generated!");
+    }
+    
     console.log(`   Topic: ${tweetData.topic.theme}`);
     console.log(`   Tweet: "${tweetData.text}"`);
     console.log(`   Length: ${tweetData.text.length}/280 chars`);
+    if (tweetData.sourceUrl) {
+      console.log(`   Source: ${tweetData.sourceUrl}`);
+    }
 
     // Step 2: Enhance the image prompt
     const imagePrompt = enhanceImagePrompt(tweetData.imagePrompt, tweetData.topic);
@@ -93,10 +117,11 @@ async function generateAndPost() {
       imageBuffer = await generateImage(imagePrompt, imagePath);
 
       // Save tweet text
-      const textContent = `Topic: ${tweetData.topic.theme}
+      const textContent = `${tweetData.isNews ? "📰 NEWS POST" : "📝 REGULAR POST"}
+Topic: ${tweetData.topic.theme}
 Tweet: ${tweetData.text}
 Length: ${tweetData.text.length}/280
-
+${tweetData.sourceUrl ? `Source: ${tweetData.sourceUrl}` : ""}
 Image Prompt: ${imagePrompt}
 
 Generated: ${new Date().toISOString()}`;
