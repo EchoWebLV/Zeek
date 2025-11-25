@@ -14,6 +14,32 @@ export function initGemini(apiKey) {
 }
 
 /**
+ * Follow a redirect URL to get the actual destination
+ * @param {string} redirectUrl - The Google grounding redirect URL
+ * @returns {Promise<string>} The actual destination URL
+ */
+async function resolveRedirectUrl(redirectUrl) {
+  try {
+    const response = await fetch(redirectUrl, {
+      method: 'HEAD',
+      redirect: 'follow'
+    });
+    return response.url;
+  } catch (error) {
+    // If HEAD fails, try GET
+    try {
+      const response = await fetch(redirectUrl, {
+        redirect: 'follow'
+      });
+      return response.url;
+    } catch {
+      console.warn("Could not resolve redirect URL:", error.message);
+      return redirectUrl;
+    }
+  }
+}
+
+/**
  * Check if next post should be a news post
  */
 export function shouldBeNewsPost() {
@@ -61,11 +87,16 @@ Include the date if possible.`,
       }
     });
 
-    // Get source URL from grounding metadata
+    // Get source URL from grounding metadata and resolve redirect
     let sourceUrl = null;
     const groundingChunks = searchResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (groundingChunks && groundingChunks.length > 0) {
-      sourceUrl = groundingChunks[0]?.web?.uri || null;
+      const redirectUrl = groundingChunks[0]?.web?.uri;
+      if (redirectUrl) {
+        console.log("   🔗 Resolving source URL...");
+        sourceUrl = await resolveRedirectUrl(redirectUrl);
+        console.log("   ✅ Source:", sourceUrl);
+      }
     }
 
     const newsContext = searchResponse.text;
@@ -76,15 +107,15 @@ Include the date if possible.`,
       contents: `Based on this news:
 ${newsContext}
 
-Write a post with EXACTLY TWO PARAGRAPHS:
-- First paragraph: What happened (the news)
-- Second paragraph: Why it matters for privacy/ZK
+Write a detailed post with TWO PARAGRAPHS:
+- First paragraph: What happened (the news) - be specific with names, numbers, dates
+- Second paragraph: Why it matters for privacy/ZK technology - provide insight
 
 RULES:
-- Total 200-270 characters
+- NO character limit - be thorough and insightful
 - NO hashtags, NO emojis
 - Be specific about the actual news
-- Sound like a knowledgeable insider
+- Sound like a knowledgeable insider breaking news
 
 Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
 
@@ -97,16 +128,12 @@ JSON format only:
 
     const result = JSON.parse(tweetResponse.text);
 
-    // Clean up tweet
+    // Clean up tweet (no truncation - user prefers longer posts)
     let cleanTweet = (result.tweet || "")
       .replace(/#\w+/g, '')
       .replace(/[\u{1F600}-\u{1F6FF}]/gu, '')
       .replace(/\s+/g, ' ')
       .trim();
-
-    if (cleanTweet.length > 280) {
-      cleanTweet = cleanTweet.substring(0, 277) + "...";
-    }
 
     // For news posts, we'll keep the source URL separate (for the text file)
     // but add a note that it's sourced news
@@ -143,8 +170,8 @@ export async function generatePrivacyTweet() {
 TOPIC: ${topic.theme}
 CONTEXT: ${topic.context}
 
-Write a post with EXACTLY TWO PARAGRAPHS (separated by blank line). 
-Total length 200-270 characters. No hashtags, no emojis.
+Write a compelling post with TWO PARAGRAPHS (separated by blank line). 
+Be thorough and insightful - no character limit. No hashtags, no emojis.
 Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
 
 JSON format:
@@ -162,16 +189,11 @@ JSON format:
     const result = JSON.parse(response.text);
     
     // Clean up: remove any hashtags and emojis that slipped through
+    // No character limit - user has X Premium (35k chars allowed)
     let cleanTweet = result.tweet
       .replace(/#\w+/g, '')  // Remove hashtags
       .replace(/[\u{1F600}-\u{1F6FF}]/gu, '')  // Remove emojis
-      .replace(/\s+/g, ' ')  // Clean up extra spaces
       .trim();
-    
-    // Validate length
-    if (cleanTweet.length > 280) {
-      cleanTweet = cleanTweet.substring(0, 277) + "...";
-    }
 
     return {
       text: cleanTweet,
