@@ -6,6 +6,7 @@ node_modules/
 
 # Test output
 test/
+testBlog/
 
 # OS files
 .DS_Store
