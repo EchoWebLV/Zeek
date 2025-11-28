@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initGemini, generatePrivacyTweet, generateZKNewsPost, shouldBeNewsPost, enhanceImagePrompt } from "./services/gemini.js";
+import { initGemini, generatePrivacyTweet, generateZKNewsPost, shouldBeNewsPost } from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
 
@@ -90,9 +90,9 @@ async function generateAndPost() {
       console.log(`   Source: ${tweetData.sourceUrl}`);
     }
 
-    // Step 2: Enhance the image prompt
-    const imagePrompt = enhanceImagePrompt(tweetData.imagePrompt, tweetData.topic);
-    console.log("\n🎨 Image prompt:", imagePrompt.substring(0, 100) + "...");
+    // Step 2: Use the scene description directly (will be combined with sprite)
+    const imageScene = tweetData.imagePrompt;
+    console.log("\n🎨 Scene:", imageScene);
 
     // Step 3: Generate image with Imagen
     let imageBuffer;
@@ -114,15 +114,15 @@ async function generateAndPost() {
       imagePath = path.join(CONFIG.testDir, `post${nextNumber}.jpg`);
       const textPath = path.join(CONFIG.testDir, `post${nextNumber}.txt`);
 
-      imageBuffer = await generateImage(imagePrompt, imagePath);
+      imageBuffer = await generateImage(imageScene, imagePath);
 
       // Save tweet text
       const textContent = `${tweetData.isNews ? "📰 NEWS POST" : "📝 REGULAR POST"}
 Topic: ${tweetData.topic.theme}
 Tweet: ${tweetData.text}
-Length: ${tweetData.text.length}/280
+Length: ${tweetData.text.length} chars
 ${tweetData.sourceUrl ? `Source: ${tweetData.sourceUrl}` : ""}
-Image Prompt: ${imagePrompt}
+Image Scene: ${imageScene}
 
 Generated: ${new Date().toISOString()}`;
       
@@ -137,7 +137,7 @@ Generated: ${new Date().toISOString()}`;
       console.log(`   - ${path.basename(textPath)}`);
     } else {
       // Production mode - generate and post
-      imageBuffer = await generateImage(imagePrompt);
+      imageBuffer = await generateImage(imageScene);
 
       // Step 4: Post to X
       console.log("\n🚀 Posting to X...");

@@ -117,10 +117,12 @@ RULES:
 - Sound excited but not overly technical
 - Make it interesting for newcomers AND experts
 
-Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
+Also provide an image scene for a cartoon mascot (Zeke in green hoodie).
+The scene should be DIRECTLY related to the news - show Zeke reacting to or celebrating the news.
+Examples: "Zeke reading a newspaper with excitement", "Zeke connecting two puzzle pieces", "Zeke planting a flag on a mountain"
 
 JSON format only:
-{"tweet": "First paragraph.\\n\\nSecond paragraph.", "imagePrompt": "image description"}`,
+{"tweet": "First paragraph.\\n\\nSecond paragraph.", "imageScene": "Zeke doing something related to the news"}`,
       config: {
         responseMimeType: "application/json",
       }
@@ -144,7 +146,7 @@ JSON format only:
     return {
       text: cleanTweet,
       topic: { theme: "📰 ZK News (This Week)" },
-      imagePrompt: result.imagePrompt || "Abstract zero-knowledge proof visualization",
+      imagePrompt: result.imageScene || result.imagePrompt || "Zeke celebrating with confetti",
       sourceUrl: sourceUrl,
       isNews: true
     };
@@ -173,10 +175,13 @@ CONTEXT: ${topic.context}
 Write a clear, accessible post with TWO PARAGRAPHS (400-600 chars total).
 Explain concepts simply - like talking to a smart friend who's new to crypto.
 No hashtags, no emojis.
-Also provide a cinematic image description (1 sentence) - abstract, dark, futuristic.
+
+Also provide an image scene description for a cartoon mascot character (Zeke in a green hoodie).
+The scene should be DIRECTLY related to the post topic - show Zeke doing something that illustrates the concept.
+Examples: "Zeke building a shield around a treasure chest", "Zeke running through a maze of transparent walls", "Zeke holding a key that unlocks invisible doors"
 
 JSON format:
-{"tweet": "First paragraph here.\\n\\nSecond paragraph here.", "imagePrompt": "image description"}`;
+{"tweet": "First paragraph here.\\n\\nSecond paragraph here.", "imageScene": "Zeke doing something related to the topic"}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -199,7 +204,7 @@ JSON format:
     return {
       text: cleanTweet,
       topic: topic,
-      imagePrompt: result.imagePrompt
+      imagePrompt: result.imageScene || result.imagePrompt
     };
   } catch (error) {
     console.error("Error generating tweet with Gemini:", error);
@@ -208,25 +213,19 @@ JSON format:
 }
 
 /**
+ * Zeke character description for consistent image generation
+ */
+const ZEKE_CHARACTER = `A cute cartoon mascot character named Zeke: round friendly face, olive/army green hoodie with a yellow "Z" logo on the chest, cream-colored skin, brown boots, friendly smile, simple cartoon style like a classic mascot`;
+
+/**
  * Enhance an image prompt for better Imagen results
+ * Always includes Zeke character in a consistent cartoon style
  * @param {string} basePrompt - The base image description
  * @param {object} topic - The topic object for context
  * @returns {string} Enhanced prompt for image generation
  */
 export function enhanceImagePrompt(basePrompt, topic) {
-  const styleModifiers = [
-    "cyberpunk aesthetic",
-    "neon glow",
-    "digital art",
-    "futuristic",
-    "abstract geometric",
-    "dark theme with vibrant accents",
-    "high contrast",
-    "mysterious atmosphere"
-  ];
-  
-  const randomStyle = styleModifiers[Math.floor(Math.random() * styleModifiers.length)];
-  
-  return `${basePrompt}. Style: ${randomStyle}, privacy and encryption theme, ${topic.theme.toLowerCase()} concept, professional quality, 4K, dramatic lighting`;
+  // Create scene-specific prompt with Zeke as the main character
+  return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: cute cartoon illustration, vibrant colors, clean lines, friendly and approachable, digital art, professional mascot art style, consistent character design`;
 }
 

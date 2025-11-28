@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.join(__dirname, "../..");
 
 let ai = null;
 
@@ -12,35 +17,99 @@ export function initImagen(apiKey) {
 }
 
 /**
- * Generate an image using Imagen based on the prompt
- * @param {string} prompt - The image generation prompt
+ * Load the Zeke sprite as base64
+ */
+function loadSpriteBase64() {
+  const spritePath = path.join(PROJECT_ROOT, "sprite.png");
+  if (!fs.existsSync(spritePath)) {
+    console.warn("sprite.png not found at:", spritePath);
+    return null;
+  }
+  const spriteBuffer = fs.readFileSync(spritePath);
+  return spriteBuffer.toString("base64");
+}
+
+/**
+ * Generate an image using Gemini 3 Pro Image with Zeke character
+ * @param {string} sceneDescription - Description of the scene (tightly connected to post)
  * @param {string} outputPath - Optional path to save the image
  * @returns {Promise<Buffer>} The generated image as a buffer
  */
-export async function generateImage(prompt, outputPath = null) {
+export async function generateImage(sceneDescription, outputPath = null) {
   if (!ai) {
     throw new Error("Imagen not initialized. Call initImagen() first.");
   }
 
-  console.log("🎨 Generating image with Imagen...");
-  console.log("   Prompt:", prompt.substring(0, 100) + "...");
+  console.log("🎨 Generating image with Gemini 3 Pro Image...");
+  console.log("   Scene:", sceneDescription.substring(0, 80) + "...");
+
+  // Load the Zeke sprite
+  const spriteBase64 = loadSpriteBase64();
+  
+  const prompt = `Create a cartoon illustration featuring this EXACT character in this scene: ${sceneDescription}
+
+CHARACTER DETAILS (MUST MATCH EXACTLY):
+- Name: Zeke
+- Face/skin: BEIGE/CREAM color (NOT green, NOT colorful)
+- Hoodie: Olive/army GREEN color
+- Yellow "Z" logo on the chest
+- White cartoon gloves
+- Brown boots
+- Round friendly face with simple smile
+- Hood up on his head
+
+STYLE RULES:
+- Match the reference image EXACTLY - same character design
+- Clean cartoon mascot style
+- Colorful background but character colors stay consistent
+- No text in the image
+- Friendly and engaging scene`;
 
   try {
-    const response = await ai.models.generateImages({
-      model: "imagen-4.0-generate-001",
-      prompt: prompt,
+    let contents;
+    
+    if (spriteBase64) {
+      // Use sprite as reference image
+      contents = [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: "image/png",
+            data: spriteBase64,
+          },
+        },
+      ];
+    } else {
+      // Fallback if no sprite
+      contents = prompt;
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-image-preview",
+      contents: contents,
       config: {
-        numberOfImages: 1,
-        aspectRatio: "16:9", // Good for Twitter/X
+        responseModalities: ["TEXT", "IMAGE"],
+        imageConfig: {
+          aspectRatio: "16:9",
+          imageSize: "2K",
+        },
       },
     });
 
-    if (!response.generatedImages || response.generatedImages.length === 0) {
-      throw new Error("No images generated");
+    // Extract the image from response
+    let imageBuffer = null;
+    
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        const imageData = part.inlineData.data;
+        imageBuffer = Buffer.from(imageData, "base64");
+        break;
+      }
     }
 
-    const imageBytes = response.generatedImages[0].image.imageBytes;
-    const imageBuffer = Buffer.from(imageBytes, "base64");
+    if (!imageBuffer) {
+      throw new Error("No image generated in response");
+    }
 
     // Save to file if path provided
     if (outputPath) {
@@ -54,24 +123,7 @@ export async function generateImage(prompt, outputPath = null) {
 
     return imageBuffer;
   } catch (error) {
-    console.error("Error generating image with Imagen:", error);
+    console.error("Error generating image:", error);
     throw error;
   }
 }
-
-/**
- * Generate a privacy-themed image with predefined style
- * @param {string} concept - The core concept to visualize
- * @returns {Promise<Buffer>} The generated image buffer
- */
-export async function generatePrivacyImage(concept, outputPath = null) {
-  const prompt = `A visually striking digital art representation of ${concept}. 
-Style: Cyberpunk aesthetic with neon accents on dark background, 
-featuring abstract geometric shapes, glowing circuits, encrypted data streams, 
-and symbols of privacy and security. 
-High quality, professional, dramatic lighting, mysterious atmosphere.
-No text or words in the image.`;
-
-  return generateImage(prompt, outputPath);
-}
-

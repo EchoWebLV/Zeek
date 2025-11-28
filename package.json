@@ -21,11 +21,11 @@
   "license": "MIT",
   "dependencies": {
     "@google/genai": "^1.0.0",
-    "twitter-api-v2": "^1.17.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "sharp": "^0.34.5",
+    "twitter-api-v2": "^1.17.2"
   },
   "engines": {
     "node": ">=18.0.0"
   }
 }
-
