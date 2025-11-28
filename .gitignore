@@ -15,6 +15,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Build output
+dist/
+
 # Logs
 *.log
 npm-debug.log*

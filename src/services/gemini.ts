@@ -1,57 +1,47 @@
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT, getRandomTopic } from "../config/topics.js";
+import type { TweetData, PrivacyTopic, GeminiTweetResponse } from "../types.js";
 
-let ai = null;
-
-// Track post count for alternating between regular and news posts
-let postCount = 0;
+let ai: GoogleGenAI | null = null;
 
 /**
  * Initialize the Google AI client
  */
-export function initGemini(apiKey) {
+export function initGemini(apiKey: string): void {
   ai = new GoogleGenAI({ apiKey });
 }
 
 /**
  * Follow a redirect URL to get the actual destination
- * @param {string} redirectUrl - The Google grounding redirect URL
- * @returns {Promise<string>} The actual destination URL
  */
-async function resolveRedirectUrl(redirectUrl) {
+async function resolveRedirectUrl(redirectUrl: string): Promise<string> {
   try {
     const response = await fetch(redirectUrl, {
-      method: 'HEAD',
-      redirect: 'follow'
+      method: "HEAD",
+      redirect: "follow",
     });
     return response.url;
   } catch (error) {
     // If HEAD fails, try GET
     try {
       const response = await fetch(redirectUrl, {
-        redirect: 'follow'
+        redirect: "follow",
       });
       return response.url;
     } catch {
-      console.warn("Could not resolve redirect URL:", error.message);
+      console.warn(
+        "Could not resolve redirect URL:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
       return redirectUrl;
     }
   }
 }
 
 /**
- * Check if next post should be a news post
- */
-export function shouldBeNewsPost() {
-  postCount++;
-  return postCount % 2 === 0; // Every 2nd post is news
-}
-
-/**
  * Generate a ZK news post using Google Search grounding
- * @returns {Promise<{text: string, topic: object, imagePrompt: string, sourceUrl: string}>}
  */
-export async function generateZKNewsPost() {
+export async function generateZKNewsPost(): Promise<TweetData> {
   if (!ai) {
     throw new Error("Gemini not initialized. Call initGemini() first.");
   }
@@ -66,7 +56,7 @@ export async function generateZKNewsPost() {
     "homomorphic encryption blockchain",
     "Starknet ZK technology news",
     "Mina Protocol updates",
-    "Aztec Network privacy news"
+    "Aztec Network privacy news",
   ];
 
   const randomTopic = newsTopics[Math.floor(Math.random() * newsTopics.length)];
@@ -84,12 +74,19 @@ Must be recent - within the past week.
 Include the date if possible.`,
       config: {
         tools: [{ googleSearch: {} }],
-      }
+      },
     });
 
     // Get source URL from grounding metadata and resolve redirect
-    let sourceUrl = null;
-    const groundingChunks = searchResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    let sourceUrl: string | undefined;
+    const groundingChunks = (
+      searchResponse.candidates?.[0] as {
+        groundingMetadata?: {
+          groundingChunks?: Array<{ web?: { uri?: string } }>;
+        };
+      }
+    )?.groundingMetadata?.groundingChunks;
+
     if (groundingChunks && groundingChunks.length > 0) {
       const redirectUrl = groundingChunks[0]?.web?.uri;
       if (redirectUrl) {
@@ -125,16 +122,16 @@ JSON format only:
 {"tweet": "First paragraph.\\n\\nSecond paragraph.", "imageScene": "Zeke doing something related to the news"}`,
       config: {
         responseMimeType: "application/json",
-      }
+      },
     });
 
-    const result = JSON.parse(tweetResponse.text);
+    const result = JSON.parse(tweetResponse.text ?? "{}") as GeminiTweetResponse;
 
     // Clean up tweet (no truncation - user prefers longer posts)
     let cleanTweet = (result.tweet || "")
-      .replace(/#\w+/g, '')
-      .replace(/[\u{1F600}-\u{1F6FF}]/gu, '')
-      .replace(/\s+/g, ' ')
+      .replace(/#\w+/g, "")
+      .replace(/[\u{1F600}-\u{1F6FF}]/gu, "")
+      .replace(/\s+/g, " ")
       .trim();
 
     // For news posts, we'll keep the source URL separate (for the text file)
@@ -145,10 +142,10 @@ JSON format only:
 
     return {
       text: cleanTweet,
-      topic: { theme: "📰 ZK News (This Week)" },
+      topic: { theme: "📰 ZK News (This Week)", context: "" },
       imagePrompt: result.imageScene || result.imagePrompt || "Zeke celebrating with confetti",
       sourceUrl: sourceUrl,
-      isNews: true
+      isNews: true,
     };
   } catch (error) {
     console.error("Error generating ZK news post:", error);
@@ -158,15 +155,14 @@ JSON format only:
 
 /**
  * Generate a privacy-focused tweet using Gemini 3.0
- * @returns {Promise<{text: string, topic: object, imagePrompt: string}>}
  */
-export async function generatePrivacyTweet() {
+export async function generatePrivacyTweet(): Promise<TweetData> {
   if (!ai) {
     throw new Error("Gemini not initialized. Call initGemini() first.");
   }
 
   const topic = getRandomTopic();
-  
+
   const prompt = `${SYSTEM_PROMPT}
 
 TOPIC: ${topic.theme}
@@ -189,22 +185,22 @@ JSON format:
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-      }
+      },
     });
 
-    const result = JSON.parse(response.text);
-    
+    const result = JSON.parse(response.text ?? "{}") as GeminiTweetResponse;
+
     // Clean up: remove any hashtags and emojis that slipped through
     // No character limit - user has X Premium (35k chars allowed)
-    let cleanTweet = result.tweet
-      .replace(/#\w+/g, '')  // Remove hashtags
-      .replace(/[\u{1F600}-\u{1F6FF}]/gu, '')  // Remove emojis
+    const cleanTweet = result.tweet
+      .replace(/#\w+/g, "") // Remove hashtags
+      .replace(/[\u{1F600}-\u{1F6FF}]/gu, "") // Remove emojis
       .trim();
 
     return {
       text: cleanTweet,
       topic: topic,
-      imagePrompt: result.imageScene || result.imagePrompt
+      imagePrompt: result.imageScene || result.imagePrompt || "",
     };
   } catch (error) {
     console.error("Error generating tweet with Gemini:", error);
@@ -220,11 +216,8 @@ const ZEKE_CHARACTER = `A cute cartoon mascot character named Zeke: round friend
 /**
  * Enhance an image prompt for better Imagen results
  * Always includes Zeke character in a consistent cartoon style
- * @param {string} basePrompt - The base image description
- * @param {object} topic - The topic object for context
- * @returns {string} Enhanced prompt for image generation
  */
-export function enhanceImagePrompt(basePrompt, topic) {
+export function enhanceImagePrompt(basePrompt: string, _topic: PrivacyTopic): string {
   // Create scene-specific prompt with Zeke as the main character
   return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: cute cartoon illustration, vibrant colors, clean lines, friendly and approachable, digital art, professional mascot art style, consistent character design`;
 }

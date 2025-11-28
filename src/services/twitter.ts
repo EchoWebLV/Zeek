@@ -1,11 +1,12 @@
 import { TwitterApi } from "twitter-api-v2";
+import type { TwitterCredentials } from "../types.js";
 
-let client = null;
+let client: TwitterApi | null = null;
 
 /**
  * Initialize the Twitter/X client
  */
-export function initTwitter(credentials) {
+export function initTwitter(credentials: TwitterCredentials): void {
   client = new TwitterApi({
     appKey: credentials.apiKey,
     appSecret: credentials.apiSecret,
@@ -14,13 +15,20 @@ export function initTwitter(credentials) {
   });
 }
 
+interface TweetResponse {
+  data: {
+    id: string;
+    text?: string;
+  };
+}
+
 /**
  * Post a tweet with an image
- * @param {string} text - The tweet text
- * @param {Buffer} imageBuffer - The image as a buffer
- * @returns {Promise<object>} The tweet response
  */
-export async function postTweetWithImage(text, imageBuffer) {
+export async function postTweetWithImage(
+  text: string,
+  imageBuffer: Buffer
+): Promise<TweetResponse> {
   if (!client) {
     throw new Error("Twitter client not initialized. Call initTwitter() first.");
   }
@@ -44,7 +52,7 @@ export async function postTweetWithImage(text, imageBuffer) {
 
     console.log("   ✅ Tweet posted successfully!");
     console.log("   Tweet ID:", tweet.data.id);
-    
+
     return tweet;
   } catch (error) {
     console.error("Error posting tweet:", error);
@@ -54,10 +62,8 @@ export async function postTweetWithImage(text, imageBuffer) {
 
 /**
  * Post a text-only tweet
- * @param {string} text - The tweet text
- * @returns {Promise<object>} The tweet response
  */
-export async function postTweet(text) {
+export async function postTweet(text: string): Promise<TweetResponse> {
   if (!client) {
     throw new Error("Twitter client not initialized. Call initTwitter() first.");
   }
@@ -74,13 +80,12 @@ export async function postTweet(text) {
 
 /**
  * Verify Twitter credentials
- * @returns {Promise<boolean>}
  */
-export async function verifyCredentials() {
+export async function verifyCredentials(): Promise<boolean> {
   if (!client) {
     return false;
   }
-  
+
   try {
     const me = await client.v2.me();
     console.log("   ✅ Twitter authenticated as:", me.data.username);

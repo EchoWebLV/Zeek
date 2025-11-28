@@ -7,19 +7,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, "../..");
 
-let ai = null;
+let ai: GoogleGenAI | null = null;
 
 /**
  * Initialize the Google AI client for Imagen
  */
-export function initImagen(apiKey) {
+export function initImagen(apiKey: string): void {
   ai = new GoogleGenAI({ apiKey });
 }
 
 /**
  * Load the Zeke sprite as base64
  */
-function loadSpriteBase64() {
+function loadSpriteBase64(): string | null {
   const spritePath = path.join(PROJECT_ROOT, "sprite.png");
   if (!fs.existsSync(spritePath)) {
     console.warn("sprite.png not found at:", spritePath);
@@ -29,13 +29,29 @@ function loadSpriteBase64() {
   return spriteBuffer.toString("base64");
 }
 
+interface ImageContent {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+interface ImageResponsePart {
+  text?: string;
+  inlineData?: {
+    data: string;
+    mimeType: string;
+  };
+}
+
 /**
  * Generate an image using Gemini 3 Pro Image with Zeke character
- * @param {string} sceneDescription - Description of the scene (tightly connected to post)
- * @param {string} outputPath - Optional path to save the image
- * @returns {Promise<Buffer>} The generated image as a buffer
  */
-export async function generateImage(sceneDescription, outputPath = null) {
+export async function generateImage(
+  sceneDescription: string,
+  outputPath: string | null = null
+): Promise<Buffer> {
   if (!ai) {
     throw new Error("Imagen not initialized. Call initImagen() first.");
   }
@@ -45,7 +61,7 @@ export async function generateImage(sceneDescription, outputPath = null) {
 
   // Load the Zeke sprite
   const spriteBase64 = loadSpriteBase64();
-  
+
   const prompt = `Create a cartoon illustration featuring this EXACT character in this scene: ${sceneDescription}
 
 CHARACTER DETAILS (MUST MATCH EXACTLY):
@@ -66,8 +82,8 @@ STYLE RULES:
 - Friendly and engaging scene`;
 
   try {
-    let contents;
-    
+    let contents: string | ImageContent[];
+
     if (spriteBase64) {
       // Use sprite as reference image
       contents = [
@@ -97,13 +113,16 @@ STYLE RULES:
     });
 
     // Extract the image from response
-    let imageBuffer = null;
-    
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        const imageData = part.inlineData.data;
-        imageBuffer = Buffer.from(imageData, "base64");
-        break;
+    let imageBuffer: Buffer | null = null;
+
+    const parts = response.candidates?.[0]?.content?.parts as ImageResponsePart[] | undefined;
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData) {
+          const imageData = part.inlineData.data;
+          imageBuffer = Buffer.from(imageData, "base64");
+          break;
+        }
       }
     }
 
@@ -127,3 +146,4 @@ STYLE RULES:
     throw error;
   }
 }
+

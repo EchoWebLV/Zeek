@@ -2,12 +2,14 @@
   "name": "zeke-privacy-bot",
   "version": "1.0.0",
   "description": "Privacy-focused X bot using Gemini 3.0 for text and Imagen for images",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node src/index.js --local",
-    "generate": "node src/index.js --local"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts --local",
+    "generate": "tsx src/index.ts --local",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "privacy",
@@ -15,7 +17,8 @@
     "gemini",
     "imagen",
     "twitter",
-    "x"
+    "x",
+    "zcash"
   ],
   "author": "",
   "license": "MIT",
@@ -24,6 +27,11 @@
     "dotenv": "^16.4.5",
     "sharp": "^0.34.5",
     "twitter-api-v2": "^1.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
   },
   "engines": {
     "node": ">=18.0.0"

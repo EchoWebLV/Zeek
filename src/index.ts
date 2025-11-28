@@ -3,9 +3,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initGemini, generatePrivacyTweet, generateZKNewsPost, shouldBeNewsPost } from "./services/gemini.js";
+import { initGemini, generatePrivacyTweet, generateZKNewsPost } from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
+import type { AppConfig, GenerationResult } from "./types.js";
 
 // Load environment variables
 dotenv.config();
@@ -15,13 +16,13 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, "..");
 
 // Configuration
-const CONFIG = {
-  googleApiKey: process.env.GOOGLE_AI_API_KEY,
+const CONFIG: AppConfig = {
+  googleApiKey: process.env.GOOGLE_AI_API_KEY || "",
   twitter: {
-    apiKey: process.env.X_API_KEY,
-    apiSecret: process.env.X_API_SECRET,
-    accessToken: process.env.X_ACCESS_TOKEN,
-    accessSecret: process.env.X_ACCESS_SECRET,
+    apiKey: process.env.X_API_KEY || "",
+    apiSecret: process.env.X_API_SECRET || "",
+    accessToken: process.env.X_ACCESS_TOKEN || "",
+    accessSecret: process.env.X_ACCESS_SECRET || "",
   },
   isLocalMode: process.argv.includes("--local") || process.env.MODE === "local",
   testDir: path.join(PROJECT_ROOT, "test"),
@@ -30,7 +31,7 @@ const CONFIG = {
 /**
  * Main bot function - generates and posts privacy content
  */
-async function generateAndPost() {
+async function generateAndPost(): Promise<GenerationResult> {
   console.log("\n" + "=".repeat(60));
   console.log("🔐 ZEKE Privacy Bot - Starting Generation");
   console.log("=".repeat(60));
@@ -63,14 +64,14 @@ async function generateAndPost() {
     if (fs.existsSync(CONFIG.testDir)) {
       const existingFiles = fs.readdirSync(CONFIG.testDir);
       const postNumbers = existingFiles
-        .filter(f => f.startsWith("post") && f.endsWith(".jpg"))
-        .map(f => parseInt(f.match(/post(\d+)/)?.[1] || 0));
+        .filter((f) => f.startsWith("post") && f.endsWith(".jpg"))
+        .map((f) => parseInt(f.match(/post(\d+)/)?.[1] || "0"));
       nextPostNumber = Math.max(0, ...postNumbers) + 1;
     }
-    
+
     // Every 2nd post is a news post (posts 2, 4, 6, etc.)
     const isNewsPost = nextPostNumber % 2 === 0;
-    
+
     // Step 1: Generate tweet text with Gemini
     let tweetData;
     if (isNewsPost) {
@@ -82,7 +83,7 @@ async function generateAndPost() {
       tweetData = await generatePrivacyTweet();
       console.log("   ✅ Tweet generated!");
     }
-    
+
     console.log(`   Topic: ${tweetData.topic.theme}`);
     console.log(`   Tweet: "${tweetData.text}"`);
     console.log(`   Length: ${tweetData.text.length}/280 chars`);
@@ -95,8 +96,8 @@ async function generateAndPost() {
     console.log("\n🎨 Scene:", imageScene);
 
     // Step 3: Generate image with Imagen
-    let imageBuffer;
-    let imagePath = null;
+    let imageBuffer: Buffer;
+    let imagePath: string | null = null;
 
     if (CONFIG.isLocalMode) {
       // Create test directory and save files
@@ -107,8 +108,8 @@ async function generateAndPost() {
       // Find the next post number
       const existingFiles = fs.readdirSync(CONFIG.testDir);
       const postNumbers = existingFiles
-        .filter(f => f.startsWith("post") && f.endsWith(".jpg"))
-        .map(f => parseInt(f.match(/post(\d+)/)?.[1] || 0));
+        .filter((f) => f.startsWith("post") && f.endsWith(".jpg"))
+        .map((f) => parseInt(f.match(/post(\d+)/)?.[1] || "0"));
       const nextNumber = Math.max(0, ...postNumbers) + 1;
 
       imagePath = path.join(CONFIG.testDir, `post${nextNumber}.jpg`);
@@ -125,7 +126,7 @@ ${tweetData.sourceUrl ? `Source: ${tweetData.sourceUrl}` : ""}
 Image Scene: ${imageScene}
 
 Generated: ${new Date().toISOString()}`;
-      
+
       fs.writeFileSync(textPath, textContent);
       console.log(`   ✅ Text saved to: ${textPath}`);
 
@@ -135,6 +136,13 @@ Generated: ${new Date().toISOString()}`;
       console.log(`📁 Output saved to: ${CONFIG.testDir}`);
       console.log(`   - ${path.basename(imagePath)}`);
       console.log(`   - ${path.basename(textPath)}`);
+
+      return {
+        success: true,
+        tweet: tweetData.text,
+        topic: tweetData.topic.theme,
+        imagePath: imagePath,
+      };
     } else {
       // Production mode - generate and post
       imageBuffer = await generateImage(imageScene);
@@ -148,14 +156,16 @@ Generated: ${new Date().toISOString()}`;
       console.log("=".repeat(60));
       console.log(`Tweet ID: ${result.data.id}`);
       console.log(`URL: https://x.com/i/status/${result.data.id}`);
-    }
 
-    return {
-      success: true,
-      tweet: tweetData.text,
-      topic: tweetData.topic.theme,
-      imagePath: imagePath,
-    };
+      return {
+        success: true,
+        tweet: tweetData.text,
+        topic: tweetData.topic.theme,
+        imagePath: null,
+        tweetId: result.data.id,
+        tweetUrl: `https://x.com/i/status/${result.data.id}`,
+      };
+    }
   } catch (error) {
     console.error("\n❌ Error during generation:", error);
     throw error;
@@ -165,7 +175,7 @@ Generated: ${new Date().toISOString()}`;
 /**
  * Run the bot
  */
-async function main() {
+async function main(): Promise<void> {
   try {
     await generateAndPost();
   } catch (error) {
