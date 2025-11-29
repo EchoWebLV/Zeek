@@ -84,9 +84,14 @@ async function generateAndPost(): Promise<GenerationResult> {
       console.log("   ✅ Tweet generated!");
     }
 
+    // Add NEWS: prefix for news posts
+    const tweetText = tweetData.isNews 
+      ? `📰 NEWS: ${tweetData.text}` 
+      : tweetData.text;
+
     console.log(`   Topic: ${tweetData.topic.theme}`);
-    console.log(`   Tweet: "${tweetData.text}"`);
-    console.log(`   Length: ${tweetData.text.length}/280 chars`);
+    console.log(`   Tweet: "${tweetText}"`);
+    console.log(`   Length: ${tweetText.length}/280 chars`);
     if (tweetData.sourceUrl) {
       console.log(`   Source: ${tweetData.sourceUrl}`);
     }
@@ -120,8 +125,8 @@ async function generateAndPost(): Promise<GenerationResult> {
       // Save tweet text
       const textContent = `${tweetData.isNews ? "📰 NEWS POST" : "📝 REGULAR POST"}
 Topic: ${tweetData.topic.theme}
-Tweet: ${tweetData.text}
-Length: ${tweetData.text.length} chars
+Tweet: ${tweetText}
+Length: ${tweetText.length} chars
 ${tweetData.sourceUrl ? `Source: ${tweetData.sourceUrl}` : ""}
 Image Scene: ${imageScene}
 
@@ -139,7 +144,7 @@ Generated: ${new Date().toISOString()}`;
 
       return {
         success: true,
-        tweet: tweetData.text,
+        tweet: tweetText,
         topic: tweetData.topic.theme,
         imagePath: imagePath,
       };
@@ -149,7 +154,7 @@ Generated: ${new Date().toISOString()}`;
 
       // Step 4: Post to X
       console.log("\n🚀 Posting to X...");
-      const result = await postTweetWithImage(tweetData.text, imageBuffer);
+      const result = await postTweetWithImage(tweetText, imageBuffer);
 
       console.log("\n" + "=".repeat(60));
       console.log("✨ PRODUCTION POST COMPLETE");
@@ -159,7 +164,7 @@ Generated: ${new Date().toISOString()}`;
 
       return {
         success: true,
-        tweet: tweetData.text,
+        tweet: tweetText,
         topic: tweetData.topic.theme,
         imagePath: null,
         tweetId: result.data.id,

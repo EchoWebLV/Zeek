@@ -211,7 +211,7 @@ JSON format:
 /**
  * Zeke character description for consistent image generation
  */
-const ZEKE_CHARACTER = `A cute cartoon mascot character named Zeke: round friendly face, olive/army green hoodie with a yellow "Z" logo on the chest, cream-colored skin, brown boots, friendly smile, simple cartoon style like a classic mascot`;
+const ZEKE_CHARACTER = `A retro cartoon mascot named Zeke with ENTIRELY GREEN/OLIVE color scheme: dark round sunglasses, slicked back dark hair, GREENISH/OLIVE skin tone, olive green jacket, darker green t-shirt with yellow "Z" logo, olive pants, dark green boots - THE WHOLE CHARACTER IS MONOCHROMATIC GREEN like a vintage green-tinted mascot`;
 
 /**
  * Enhance an image prompt for better Imagen results

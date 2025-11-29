@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Full version with Zingo CLI (for live mode)
+  zeke-live:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - ZCASH_NETWORK=${ZCASH_NETWORK:-mainnet}
+      - LIGHTWALLETD_URL=${LIGHTWALLETD_URL:-https://mainnet.lightwalletd.com:9067}
+      - MIN_PAYMENT_ZEC=${MIN_PAYMENT_ZEC:-0.001}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30000}
+    volumes:
+      - ./testBlog:/app/testBlog
+      - zingo-data:/app/.zingo
+    restart: unless-stopped
+
+  # Slim version for demo mode
+  zeke-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile.slim
+    environment:
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+    volumes:
+      - ./testBlog:/app/testBlog
+    command: ["node", "dist/blog.js", "--demo"]
+
+  # Twitter bot
+  zeke-twitter:
+    build:
+      context: .
+      dockerfile: Dockerfile.slim
+    environment:
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - X_API_KEY=${X_API_KEY}
+      - X_API_SECRET=${X_API_SECRET}
+      - X_ACCESS_TOKEN=${X_ACCESS_TOKEN}
+      - X_ACCESS_SECRET=${X_ACCESS_SECRET}
+      - MODE=${MODE:-local}
+    volumes:
+      - ./test:/app/test
+    command: ["node", "dist/index.js"]
+
+volumes:
+  zingo-data:
+

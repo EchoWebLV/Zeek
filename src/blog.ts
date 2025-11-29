@@ -11,7 +11,7 @@ import {
   markTransactionProcessed,
   createBlogRequest,
   getWalletInfo,
-  watchForTransactions,
+  watchForTransactions as watchDemo,
   stopWatching,
   loadDemoTransactionsFromFile,
 } from "./services/zcash.js";
@@ -21,7 +21,17 @@ import {
   listBlogPosts,
   getBlogStats,
 } from "./services/blog.js";
-import { ZcashLightClient } from "./services/lightclient.js";
+import {
+  initZingo,
+  isZingoInstalled,
+  getZingoVersion,
+  syncWallet,
+  scanForNewTransactions,
+  watchForTransactions as watchZingo,
+  markProcessed,
+  getAddresses,
+  getBalance,
+} from "./services/zingo.js";
 import type { BlogConfig, ShieldedTransaction } from "./types.js";
 
 // Load environment variables
@@ -36,7 +46,7 @@ const CONFIG: BlogConfig = {
   googleApiKey: process.env.GOOGLE_AI_API_KEY || "",
   outputDir: path.join(PROJECT_ROOT, "testBlog"),
   zcash: {
-    lightwalletdUrl: process.env.LIGHTWALLETD_URL || "mainnet.lightwalletd.com:9067",
+    lightwalletdUrl: process.env.LIGHTWALLETD_URL || "https://mainnet.lightwalletd.com:9067",
     network: (process.env.ZCASH_NETWORK as "mainnet" | "testnet") || "mainnet",
     viewingKey: process.env.ZCASH_VIEWING_KEY,
     pollInterval: parseInt(process.env.POLL_INTERVAL || "30000"),
@@ -272,90 +282,77 @@ async function runWatch(): Promise<void> {
   // Start watching with demo file check
   setInterval(checkDemoFile, CONFIG.zcash.pollInterval);
 
-  await watchForTransactions(handleTransaction, CONFIG.zcash.pollInterval);
+  await watchDemo(handleTransaction, CONFIG.zcash.pollInterval);
 }
 
 /**
- * Live mode - connect to real Zcash network via lightwalletd
+ * Live mode - connect to real Zcash network via Zingo CLI
  */
 async function runLive(): Promise<void> {
   console.log("\n" + "=".repeat(60));
   console.log("📝 ZEKE Shielded Blog Service - LIVE MODE");
   console.log("=".repeat(60));
-  console.log("\n🔴 Connecting to real Zcash network...\n");
+  console.log("\n🔴 Connecting to real Zcash network via Zingo CLI...\n");
 
-  // Validate viewing key
-  if (!CONFIG.zcash.viewingKey) {
-    console.error("❌ Error: ZCASH_VIEWING_KEY not set in environment variables");
-    console.error("\nTo use live mode, add to your .env file:");
-    console.error("  ZCASH_VIEWING_KEY=your_32_byte_hex_viewing_key");
-    console.error("\nYou can export your viewing key from Zashi or Ywallet.");
+  // Check if Zingo is installed
+  if (!isZingoInstalled()) {
+    console.error("❌ Error: zingo-cli not found in PATH");
+    console.error("\n📦 To install zingo-cli:");
+    console.error("   1. Download from: https://github.com/zingolabs/zingo-cli/releases");
+    console.error("   2. Or build from source: cargo install --git https://github.com/zingolabs/zingolib zingo-cli");
+    console.error("\n💡 Alternatively, use --demo mode for testing:");
+    console.error("   npm run blog:demo");
     process.exit(1);
   }
 
-  // Create light client
-  const lightClient = new ZcashLightClient(CONFIG.zcash);
+  const version = getZingoVersion();
+  console.log(`   ✅ Found zingo-cli: ${version}`);
 
-  // Connect to lightwalletd
-  const connected = await lightClient.connect();
-  if (!connected) {
-    console.error("❌ Failed to connect to lightwalletd");
-    process.exit(1);
-  }
+  // Initialize Zingo
+  initZingo(CONFIG.zcash);
 
-  // Set start height if provided
-  if (startHeight) {
-    lightClient.setStartHeight(startHeight);
-  } else {
-    // Default to recent blocks (last ~1000 blocks ≈ 1 day)
-    const latestBlock = await lightClient.getLatestBlock();
-    if (latestBlock) {
-      const defaultStart = Math.max(latestBlock.height - 1000, 419200); // Sapling activation
-      lightClient.setStartHeight(defaultStart);
-      console.log(`\n📍 Starting scan from block ${defaultStart}`);
-      console.log(`   (Use --start=HEIGHT to scan from a specific block)\n`);
-    }
+  // Show wallet info
+  try {
+    const addresses = await getAddresses();
+    console.log("\n🔐 Wallet Addresses:");
+    if (addresses.unified) console.log(`   Unified: ${addresses.unified}`);
+    if (addresses.sapling) console.log(`   Sapling: ${addresses.sapling}`);
+    if (addresses.transparent) console.log(`   Transparent: ${addresses.transparent}`);
+
+    const balance = await getBalance();
+    console.log("\n💰 Wallet Balance:");
+    console.log(`   Total: ${balance.total} ZEC`);
+    console.log(`   Sapling: ${balance.sapling} ZEC`);
+    console.log(`   Orchard: ${balance.orchard} ZEC`);
+  } catch (error) {
+    console.log("   ⚠️  Could not load wallet info (wallet may need initialization)");
   }
 
   // Handle graceful shutdown
   process.on("SIGINT", () => {
     console.log("\n\n🛑 Shutting down...");
-    lightClient.close();
     process.exit(0);
   });
 
-  // Initial sync
+  // Initial sync and scan
   console.log("\n🔄 Syncing with blockchain...\n");
-  const transactions = await lightClient.sync();
+  const transactions = await scanForNewTransactions();
 
   if (transactions.length > 0) {
-    console.log(`\n🎉 Found ${transactions.length} transactions!`);
+    console.log(`\n🎉 Found ${transactions.length} transactions with memos!`);
     for (const tx of transactions) {
       await handleTransaction(tx);
+      markProcessed(tx.txid);
     }
   } else {
-    console.log("\n📭 No transactions found for this viewing key yet.");
+    console.log("\n📭 No transactions with memos found yet.");
   }
 
-  // Continue polling for new transactions
+  // Continue watching for new transactions
   console.log(`\n👁️  Watching for new transactions (polling every ${CONFIG.zcash.pollInterval / 1000}s)...`);
   console.log("   Press Ctrl+C to stop\n");
 
-  const poll = async () => {
-    try {
-      const newTxs = await lightClient.sync();
-      for (const tx of newTxs) {
-        await handleTransaction(tx);
-      }
-    } catch (error) {
-      console.error("   Error during sync:", error);
-    }
-  };
-
-  setInterval(poll, CONFIG.zcash.pollInterval);
-
-  // Keep the process running
-  await new Promise(() => {});
+  await watchZingo(handleTransaction, CONFIG.zcash.pollInterval);
 }
 
 /**

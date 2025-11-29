@@ -66,18 +66,23 @@ export async function generateImage(
 
 CHARACTER DETAILS (MUST MATCH EXACTLY):
 - Name: Zeke
-- Face/skin: BEIGE/CREAM color (NOT green, NOT colorful)
-- Hoodie: Olive/army GREEN color
-- Yellow "Z" logo on the chest
-- White cartoon gloves
-- Brown boots
-- Round friendly face with simple smile
-- Hood up on his head
+- ENTIRE CHARACTER HAS A GREEN/OLIVE TINT (monochromatic greenish color scheme)
+- DARK ROUND SUNGLASSES (black/dark green, always wearing them)
+- Slicked back dark hair (vintage 1950s style)
+- GREENISH/OLIVE skin tone (not pink or beige - GREEN tinted!)
+- Olive/army GREEN JACKET (open, unbuttoned)
+- Darker green T-SHIRT underneath with yellow/gold "Z" logo
+- Olive/army green pants
+- Dark green/olive boots
+- Friendly smile, confident pose
+- Retro/vintage mascot style (like Vault Boy from Fallout but ALL GREEN)
 
 STYLE RULES:
-- Match the reference image EXACTLY - same character design
-- Clean cartoon mascot style
-- Colorful background but character colors stay consistent
+- THE WHOLE CHARACTER MUST BE GREEN-TINTED (monochromatic olive/green palette)
+- Match the reference image color scheme - everything is shades of green/olive
+- MUST have the dark round sunglasses
+- Clean retro cartoon mascot style
+- Colorful background is OK but CHARACTER stays in green tones
 - No text in the image
 - Friendly and engaging scene`;
 

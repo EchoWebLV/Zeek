@@ -71,7 +71,34 @@ Respond in JSON format:
       },
     });
 
-    const result = JSON.parse(response.text ?? "{}") as GeminiBlogResponse;
+    let result: GeminiBlogResponse;
+    const responseText = response.text ?? "{}";
+    
+    try {
+      result = JSON.parse(responseText) as GeminiBlogResponse;
+    } catch (parseError) {
+      // Try to extract JSON from the response if it's wrapped in markdown
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          result = JSON.parse(jsonMatch[0]) as GeminiBlogResponse;
+        } catch {
+          // If JSON parsing fails, create content from raw text
+          console.log("   ⚠️  JSON parsing failed, using raw response");
+          result = {
+            title: `Article: ${request.topic}`,
+            content: responseText,
+          };
+        }
+      } else {
+        // Fallback: use the raw response as content
+        console.log("   ⚠️  No JSON found, using raw response");
+        result = {
+          title: `Article: ${request.topic}`,
+          content: responseText,
+        };
+      }
+    }
 
     if (!result.title || !result.content) {
       throw new Error("Invalid response from Gemini - missing title or content");
