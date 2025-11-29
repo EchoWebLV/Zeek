@@ -8,6 +8,9 @@ node_modules/
 test/
 testBlog/
 
+# Post counter
+.post_counter
+
 # OS files
 .DS_Store
 Thumbs.db

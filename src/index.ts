@@ -3,10 +3,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initGemini, generatePrivacyTweet, generateZKNewsPost } from "./services/gemini.js";
+import { initGemini, generatePrivacyTweet, generateZKNewsPost, generateAnalysisTweet } from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
-import type { AppConfig, GenerationResult } from "./types.js";
+import type { AppConfig, GenerationResult, TweetData } from "./types.js";
 
 // Load environment variables
 dotenv.config();
@@ -29,48 +29,92 @@ const CONFIG: AppConfig = {
 };
 
 /**
+ * Get the appropriate prefix for a tweet based on its type
+ */
+function getTweetPrefix(tweetData: TweetData): string {
+  if (tweetData.isAnalysis) return "🔍 Analysis: ";
+  if (tweetData.isNews) return "📰 News: ";
+  return "💭 Thoughts: ";
+}
+
+/**
+ * Post an Analysis tweet based on a Zcash memo
+ */
+export async function postAnalysis(memoTopic: string): Promise<GenerationResult> {
+  console.log("\n" + "=".repeat(60));
+  console.log("🔍 ZEKE Analysis - Processing Paid Request");
+  console.log("=".repeat(60));
+  console.log(`Topic: ${memoTopic}`);
+  console.log("");
+
+  try {
+    // Generate analysis
+    console.log("📝 Generating analysis with Gemini...");
+    const tweetData = await generateAnalysisTweet(memoTopic);
+    console.log("   ✅ Analysis generated!");
+
+    const tweetText = getTweetPrefix(tweetData) + tweetData.text;
+    console.log(`   Tweet: "${tweetText.substring(0, 100)}..."`);
+
+    // Generate image
+    const imageScene = tweetData.imagePrompt;
+    console.log("\n🎨 Scene:", imageScene);
+    const imageBuffer = await generateImage(imageScene);
+
+    // Post to X
+    console.log("\n🚀 Posting Analysis to X...");
+    const result = await postTweetWithImage(tweetText, imageBuffer);
+
+    console.log("\n" + "=".repeat(60));
+    console.log("✨ ANALYSIS POSTED");
+    console.log("=".repeat(60));
+    console.log(`Tweet ID: ${result.data.id}`);
+    console.log(`URL: https://x.com/i/status/${result.data.id}`);
+
+    return {
+      success: true,
+      tweet: tweetText,
+      topic: memoTopic,
+      imagePath: null,
+      tweetId: result.data.id,
+      tweetUrl: `https://x.com/i/status/${result.data.id}`,
+    };
+  } catch (error) {
+    console.error("❌ Error posting analysis:", error);
+    throw error;
+  }
+}
+
+/**
  * Main bot function - generates and posts privacy content
  */
 async function generateAndPost(): Promise<GenerationResult> {
   console.log("\n" + "=".repeat(60));
-  console.log("🔐 ZEKE Privacy Bot - Starting Generation");
+  console.log("🔐 ZEKE Privacy Bot - Generating Post");
   console.log("=".repeat(60));
   console.log(`Mode: ${CONFIG.isLocalMode ? "LOCAL (test)" : "PRODUCTION"}`);
   console.log("");
 
-  // Validate API key
-  if (!CONFIG.googleApiKey) {
-    console.error("❌ Error: GOOGLE_AI_API_KEY not set in environment variables");
-    process.exit(1);
-  }
-
-  // Initialize services
-  console.log("📡 Initializing services...");
-  initGemini(CONFIG.googleApiKey);
-  initImagen(CONFIG.googleApiKey);
-
-  if (!CONFIG.isLocalMode) {
-    initTwitter(CONFIG.twitter);
-    const isAuthenticated = await verifyCredentials();
-    if (!isAuthenticated) {
-      console.error("❌ Error: Twitter authentication failed");
-      process.exit(1);
-    }
-  }
-
   try {
-    // Get next post number to determine if this should be a news post
-    let nextPostNumber = 1;
-    if (fs.existsSync(CONFIG.testDir)) {
-      const existingFiles = fs.readdirSync(CONFIG.testDir);
-      const postNumbers = existingFiles
-        .filter((f) => f.startsWith("post") && f.endsWith(".jpg"))
-        .map((f) => parseInt(f.match(/post(\d+)/)?.[1] || "0"));
-      nextPostNumber = Math.max(0, ...postNumbers) + 1;
+    // Track post count for alternating between regular and news posts
+    const counterFile = path.join(PROJECT_ROOT, ".post_counter");
+    let postCount = 1;
+    
+    if (fs.existsSync(counterFile)) {
+      try {
+        postCount = parseInt(fs.readFileSync(counterFile, "utf-8").trim(), 10) || 1;
+      } catch {
+        postCount = 1;
+      }
     }
-
+    
     // Every 2nd post is a news post (posts 2, 4, 6, etc.)
-    const isNewsPost = nextPostNumber % 2 === 0;
+    const isNewsPost = postCount % 2 === 0;
+    
+    // Increment counter for next run
+    fs.writeFileSync(counterFile, String(postCount + 1));
+    
+    console.log(`📊 Post #${postCount} (${isNewsPost ? "NEWS" : "Regular"})`);
 
     // Step 1: Generate tweet text with Gemini
     let tweetData;
@@ -84,10 +128,8 @@ async function generateAndPost(): Promise<GenerationResult> {
       console.log("   ✅ Tweet generated!");
     }
 
-    // Add NEWS: prefix for news posts
-    const tweetText = tweetData.isNews 
-      ? `📰 NEWS: ${tweetData.text}` 
-      : tweetData.text;
+    // Add prefix based on post type
+    const tweetText = getTweetPrefix(tweetData) + tweetData.text;
 
     console.log(`   Topic: ${tweetData.topic.theme}`);
     console.log(`   Tweet: "${tweetText}"`);
@@ -177,16 +219,115 @@ Generated: ${new Date().toISOString()}`;
   }
 }
 
+// Posting interval in hours
+const POST_INTERVAL_HOURS = parseInt(process.env.POST_INTERVAL_HOURS || "4", 10);
+const POST_INTERVAL_MS = POST_INTERVAL_HOURS * 60 * 60 * 1000;
+
+// Zcash monitoring interval in seconds
+const ZCASH_POLL_INTERVAL = parseInt(process.env.ZCASH_POLL_INTERVAL || "60", 10) * 1000;
+
 /**
- * Run the bot
+ * Start Zcash payment monitoring (if configured)
+ */
+async function startZcashMonitoring(): Promise<void> {
+  const seedPhrase = process.env.ZCASH_SEED_PHRASE;
+  
+  if (!seedPhrase) {
+    console.log("💤 Zcash monitoring disabled (no ZCASH_SEED_PHRASE set)");
+    return;
+  }
+
+  try {
+    // Dynamic import to avoid issues if zingo isn't available
+    const { isZingoInstalled, initZingo, initWalletFromSeed, watchForTransactions } = 
+      await import("./services/zingo.js");
+
+    if (!isZingoInstalled()) {
+      console.log("⚠️  Zingo CLI not installed - Zcash monitoring disabled");
+      return;
+    }
+
+    console.log("\n🔗 Starting Zcash payment monitoring...");
+    
+    // Initialize Zingo
+    initZingo({
+      network: (process.env.ZCASH_NETWORK as "mainnet" | "testnet") || "mainnet",
+      lightwalletdUrl: process.env.LIGHTWALLETD_URL || "https://mainnet.lightwalletd.com:9067",
+      pollInterval: ZCASH_POLL_INTERVAL,
+    });
+
+    // Initialize wallet
+    await initWalletFromSeed(seedPhrase);
+    console.log("   ✅ Zcash wallet initialized");
+
+    // Start watching for transactions
+    watchForTransactions(async (tx) => {
+      console.log(`\n💰 Payment received! Amount: ${tx.amountZec} ZEC`);
+      console.log(`   Memo: "${tx.memo}"`);
+
+      if (tx.memo && tx.memo.length > 0) {
+        try {
+          await postAnalysis(tx.memo);
+        } catch (error) {
+          console.error("   ❌ Failed to post analysis:", error);
+        }
+      }
+    }, ZCASH_POLL_INTERVAL);
+
+  } catch (error) {
+    console.error("❌ Failed to start Zcash monitoring:", error);
+  }
+}
+
+/**
+ * Run the bot continuously
  */
 async function main(): Promise<void> {
+  console.log("🚀 ZEKE Bot starting in continuous mode...");
+  console.log(`📅 Scheduled posts every ${POST_INTERVAL_HOURS} hours`);
+  console.log("");
+
+  // Initialize services once
+  if (!CONFIG.googleApiKey) {
+    console.error("❌ Error: GOOGLE_AI_API_KEY not set");
+    process.exit(1);
+  }
+  initGemini(CONFIG.googleApiKey);
+  initImagen(CONFIG.googleApiKey);
+  
+  if (!CONFIG.isLocalMode) {
+    initTwitter(CONFIG.twitter);
+    const isAuth = await verifyCredentials();
+    if (!isAuth) {
+      console.error("❌ Error: Twitter authentication failed");
+      process.exit(1);
+    }
+  }
+
+  // Start Zcash payment monitoring (for Analysis posts)
+  await startZcashMonitoring();
+
+  // Post immediately on startup
   try {
     await generateAndPost();
   } catch (error) {
-    console.error("Fatal error:", error);
-    process.exit(1);
+    console.error("Error on initial post:", error);
   }
+
+  // Then post on schedule
+  setInterval(async () => {
+    console.log("\n⏰ Scheduled post triggered...");
+    try {
+      await generateAndPost();
+    } catch (error) {
+      console.error("Error during scheduled post:", error);
+    }
+  }, POST_INTERVAL_MS);
+
+  // Keep the process alive
+  console.log("\n💤 Bot is running...");
+  console.log(`   📝 Thoughts/News: every ${POST_INTERVAL_HOURS} hours`);
+  console.log(`   🔍 Analysis: when ZEC payment received`);
 }
 
 // Execute

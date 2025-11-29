@@ -209,9 +209,63 @@ JSON format:
 }
 
 /**
+ * Generate an Analysis tweet based on a memo/topic from a Zcash payment
+ */
+export async function generateAnalysisTweet(memoTopic: string): Promise<TweetData> {
+  if (!ai) {
+    throw new Error("Gemini not initialized. Call initGemini() first.");
+  }
+
+  const prompt = `You are a privacy technology analyst. A user has paid with shielded Zcash to request an analysis on this topic:
+
+REQUESTED TOPIC: "${memoTopic}"
+
+Write a focused ANALYSIS in TWO PARAGRAPHS (400-600 chars total):
+- First paragraph: Current state/problem analysis
+- Second paragraph: Your insight/prediction/recommendation
+
+Be analytical and insightful. This is a paid analysis, so provide real value.
+No hashtags, no emojis. Professional but accessible tone.
+
+Also provide an image scene description for a cartoon mascot (Zeke in olive-green vintage style).
+Show Zeke as an analyst - examining data, reading charts, investigating, etc.
+
+JSON format:
+{"tweet": "First paragraph analysis.\\n\\nSecond paragraph insight.", "imageScene": "Zeke analyzing/investigating something related to the topic"}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }], // Use search for up-to-date analysis
+      },
+    });
+
+    const result = JSON.parse(response.text ?? "{}") as GeminiTweetResponse;
+
+    const cleanTweet = result.tweet
+      .replace(/#\w+/g, "")
+      .replace(/[\u{1F600}-\u{1F6FF}]/gu, "")
+      .trim();
+
+    return {
+      text: cleanTweet,
+      topic: { theme: `Analysis: ${memoTopic}`, context: memoTopic },
+      imagePrompt: result.imageScene || result.imagePrompt || "",
+      isAnalysis: true,
+    };
+  } catch (error) {
+    console.error("Error generating analysis tweet:", error);
+    throw error;
+  }
+}
+
+/**
  * Zeke character description for consistent image generation
  */
-const ZEKE_CHARACTER = `A retro cartoon mascot named Zeke with ENTIRELY GREEN/OLIVE color scheme: dark round sunglasses, slicked back dark hair, GREENISH/OLIVE skin tone, olive green jacket, darker green t-shirt with yellow "Z" logo, olive pants, dark green boots - THE WHOLE CHARACTER IS MONOCHROMATIC GREEN like a vintage green-tinted mascot`;
+const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke" in MUTED OLIVE/SEPIA monochromatic style like a vintage military poster: round black sunglasses, slicked-back dark olive hair, olive-tan skin, dark olive leather jacket (open), black t-shirt with yellow "Z", giving thumbs up, confident smile. ENTIRE image uses ONLY muted olive-green and sepia tones - NO bright colors, NO vibrant greens`;
 
 /**
  * Enhance an image prompt for better Imagen results
@@ -219,6 +273,6 @@ const ZEKE_CHARACTER = `A retro cartoon mascot named Zeke with ENTIRELY GREEN/OL
  */
 export function enhanceImagePrompt(basePrompt: string, _topic: PrivacyTopic): string {
   // Create scene-specific prompt with Zeke as the main character
-  return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: cute cartoon illustration, vibrant colors, clean lines, friendly and approachable, digital art, professional mascot art style, consistent character design`;
+  return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: vintage propaganda poster, muted olive-sepia color palette, retro cartoon illustration, monochromatic green tones, Fallout Vault Boy inspired, 1950s atomic age aesthetic, NO bright colors`;
 }
 

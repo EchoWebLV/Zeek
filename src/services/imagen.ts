@@ -62,29 +62,28 @@ export async function generateImage(
   // Load the Zeke sprite
   const spriteBase64 = loadSpriteBase64();
 
-  const prompt = `Create a cartoon illustration featuring this EXACT character in this scene: ${sceneDescription}
+  const prompt = `Create a vintage propaganda-style cartoon illustration featuring this character in this scene: ${sceneDescription}
 
-CHARACTER DETAILS (MUST MATCH EXACTLY):
-- Name: Zeke
-- ENTIRE CHARACTER HAS A GREEN/OLIVE TINT (monochromatic greenish color scheme)
-- DARK ROUND SUNGLASSES (black/dark green, always wearing them)
-- Slicked back dark hair (vintage 1950s style)
-- GREENISH/OLIVE skin tone (not pink or beige - GREEN tinted!)
-- Olive/army GREEN JACKET (open, unbuttoned)
-- Darker green T-SHIRT underneath with yellow/gold "Z" logo
-- Olive/army green pants
-- Dark green/olive boots
-- Friendly smile, confident pose
-- Retro/vintage mascot style (like Vault Boy from Fallout but ALL GREEN)
+CHARACTER "ZEKE" (MUST MATCH EXACTLY):
+- Round BLACK SUNGLASSES (always wearing them)
+- Slicked-back DARK OLIVE hair (1950s pompadour style)
+- OLIVE-TAN skin tone (muted, not bright)
+- Dark OLIVE LEATHER JACKET (open/unbuttoned)
+- BLACK t-shirt with YELLOW "Z" logo on chest
+- Olive-brown pants
+- Dark boots
+- Confident smile, thumbs up pose
+- Retro Vault Boy / atomic age mascot style
 
-STYLE RULES:
-- THE WHOLE CHARACTER MUST BE GREEN-TINTED (monochromatic olive/green palette)
-- Match the reference image color scheme - everything is shades of green/olive
-- MUST have the dark round sunglasses
-- Clean retro cartoon mascot style
-- Colorful background is OK but CHARACTER stays in green tones
-- No text in the image
-- Friendly and engaging scene`;
+COLOR PALETTE (CRITICAL):
+- ENTIRE IMAGE uses MUTED OLIVE-GREEN and SEPIA tones only
+- Like a faded vintage military poster or old photograph with green tint
+- NO bright greens, NO vibrant colors
+- Think: army surplus, 1950s propaganda poster, aged paper
+- Background should also be in muted olive/sepia/tan tones
+- Monochromatic vintage aesthetic
+
+STYLE: Retro 1950s cartoon mascot, vintage propaganda poster, clean lines, atomic age aesthetic, NO modern bright colors`;
 
   try {
     let contents: string | ImageContent[];

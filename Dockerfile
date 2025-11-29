@@ -1,62 +1,56 @@
-# ZEKE Privacy Bot & Shielded Blog Service
-# Production Dockerfile with Zingo CLI support
+# ZEKE Privacy Bot
+# Production Dockerfile
 
-FROM node:20-bookworm-slim AS base
+FROM node:20-slim AS builder
 
-# Install build dependencies and Rust
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    git \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Build zingo-cli from source
-RUN cargo install --git https://github.com/zingolabs/zingolib zingo-cli
-
-# Production stage
-FROM node:20-bookworm-slim AS production
-
-# Copy zingo-cli from builder
-COPY --from=base /root/.cargo/bin/zingo-cli /usr/local/bin/zingo-cli
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libssl3 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including typescript for build)
+RUN npm ci
 
-# Copy source and build
+# Copy source
 COPY . .
+
+# Build TypeScript
 RUN npm run build
 
+# Production stage
+FROM node:20-slim AS production
+
+# Install runtime dependencies for sharp
+RUN apt-get update && apt-get install -y \
+    libvips42 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+
+# Copy sprite image
+COPY sprite.png ./sprite.png
+
 # Create data directories
-RUN mkdir -p /app/testBlog /app/.zingo
+RUN mkdir -p /app/test
 
-# Set environment variables
+# Set environment
 ENV NODE_ENV=production
-ENV ZCASH_NETWORK=mainnet
 
-# Expose no ports (this is a worker, not a server)
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "console.log('healthy')" || exit 1
-
-# Default command - run the blog service in live mode
-CMD ["node", "dist/blog.js", "--live"]
-
+# Run the bot
+CMD ["node", "dist/index.js"]

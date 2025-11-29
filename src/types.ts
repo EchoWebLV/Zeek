@@ -19,6 +19,7 @@ export interface TweetData {
   imagePrompt: string;
   sourceUrl?: string;
   isNews?: boolean;
+  isAnalysis?: boolean;
 }
 
 /** Twitter API credentials */
