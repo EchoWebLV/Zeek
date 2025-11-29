@@ -83,7 +83,9 @@ COLOR PALETTE (CRITICAL):
 - Background should also be in muted olive/sepia/tan tones
 - Monochromatic vintage aesthetic
 
-STYLE: Retro 1950s cartoon mascot, vintage propaganda poster, clean lines, atomic age aesthetic, NO modern bright colors`;
+STYLE: Retro 1950s cartoon mascot, vintage propaganda poster, clean lines, atomic age aesthetic, NO modern bright colors
+
+Text is OK when it fits the scene (warning signs, labels, symbols). Keep it minimal and readable.`;
 
   try {
     let contents: string | ImageContent[];
