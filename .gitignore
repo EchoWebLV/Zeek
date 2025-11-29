@@ -8,8 +8,9 @@ node_modules/
 test/
 testBlog/
 
-# Post counter
+# Post state
 .post_counter
+.rotation_state.json
 
 # OS files
 .DS_Store

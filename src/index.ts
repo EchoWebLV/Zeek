@@ -3,10 +3,24 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { initGemini, generatePrivacyTweet, generateZKNewsPost, generateAnalysisTweet } from "./services/gemini.js";
+import { 
+  initGemini, 
+  generatePrivacyTweet, 
+  generateZKNewsPost, 
+  generateAnalysisTweet,
+  generateTipTweet,
+  generateQuestionTweet,
+  generateQuoteTweet,
+  generatePredictionTweet,
+  generateFactTweet,
+  generateCelebrationTweet,
+  generateHotTakeTweet,
+  generateRecommendationTweet,
+  generateShoutoutTweet,
+} from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
-import type { AppConfig, GenerationResult, TweetData } from "./types.js";
+import type { AppConfig, GenerationResult, TweetData, PostType } from "./types.js";
 
 // Load environment variables
 dotenv.config();
@@ -28,13 +42,123 @@ const CONFIG: AppConfig = {
   testDir: path.join(PROJECT_ROOT, "test"),
 };
 
+/** All non-news post types that rotate */
+const ROTATING_POST_TYPES: PostType[] = [
+  "thoughts", "tip", "question", "quote", "prediction", 
+  "fact", "celebration", "hottake", "recommendation", "shoutout"
+];
+
+/** Prefix map for each post type */
+const POST_PREFIXES: Record<PostType, string> = {
+  thoughts: "💭 Thoughts: ",
+  news: "📰 News: ",
+  analysis: "🔍 Analysis: ",
+  tip: "💡 Tip: ",
+  question: "❓ Question: ",
+  quote: "📖 Quote: ",
+  prediction: "🔮 Prediction: ",
+  fact: "⚡ Fact: ",
+  celebration: "🎉 Celebration: ",
+  hottake: "🤔 Hot Take: ",
+  recommendation: "📚 Recommendation: ",
+  shoutout: "🙏 Shoutout: ",
+};
+
 /**
  * Get the appropriate prefix for a tweet based on its type
  */
 function getTweetPrefix(tweetData: TweetData): string {
-  if (tweetData.isAnalysis) return "🔍 Analysis: ";
-  if (tweetData.isNews) return "📰 News: ";
-  return "💭 Thoughts: ";
+  if (tweetData.isAnalysis) return POST_PREFIXES.analysis;
+  if (tweetData.isNews) return POST_PREFIXES.news;
+  if (tweetData.postType) return POST_PREFIXES[tweetData.postType];
+  return POST_PREFIXES.thoughts;
+}
+
+/**
+ * Load rotation state from file
+ */
+function loadRotationState(): { postCount: number; remainingTypes: PostType[] } {
+  const stateFile = path.join(PROJECT_ROOT, ".rotation_state.json");
+  try {
+    if (fs.existsSync(stateFile)) {
+      return JSON.parse(fs.readFileSync(stateFile, "utf-8"));
+    }
+  } catch {
+    // Ignore errors
+  }
+  return { postCount: 1, remainingTypes: [...ROTATING_POST_TYPES] };
+}
+
+/**
+ * Save rotation state to file
+ */
+function saveRotationState(state: { postCount: number; remainingTypes: PostType[] }): void {
+  const stateFile = path.join(PROJECT_ROOT, ".rotation_state.json");
+  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
+}
+
+/**
+ * Get next post type based on rotation
+ */
+function getNextPostType(): { type: PostType | "news"; isNews: boolean } {
+  const state = loadRotationState();
+  
+  // Every 2nd post is news
+  const isNewsPost = state.postCount % 2 === 0;
+  
+  if (isNewsPost) {
+    state.postCount++;
+    saveRotationState(state);
+    return { type: "news", isNews: true };
+  }
+  
+  // For non-news posts, pick randomly from remaining types
+  if (state.remainingTypes.length === 0) {
+    // Reset the pool
+    state.remainingTypes = [...ROTATING_POST_TYPES];
+  }
+  
+  const randomIndex = Math.floor(Math.random() * state.remainingTypes.length);
+  const selectedType = state.remainingTypes[randomIndex];
+  
+  // Remove from remaining
+  state.remainingTypes.splice(randomIndex, 1);
+  state.postCount++;
+  saveRotationState(state);
+  
+  return { type: selectedType, isNews: false };
+}
+
+/**
+ * Generate tweet based on type
+ */
+async function generateTweetByType(postType: PostType | "news"): Promise<TweetData> {
+  switch (postType) {
+    case "news":
+      return generateZKNewsPost();
+    case "thoughts":
+      return generatePrivacyTweet();
+    case "tip":
+      return generateTipTweet();
+    case "question":
+      return generateQuestionTweet();
+    case "quote":
+      return generateQuoteTweet();
+    case "prediction":
+      return generatePredictionTweet();
+    case "fact":
+      return generateFactTweet();
+    case "celebration":
+      return generateCelebrationTweet();
+    case "hottake":
+      return generateHotTakeTweet();
+    case "recommendation":
+      return generateRecommendationTweet();
+    case "shoutout":
+      return generateShoutoutTweet();
+    default:
+      return generatePrivacyTweet();
+  }
 }
 
 /**
@@ -96,37 +220,18 @@ async function generateAndPost(): Promise<GenerationResult> {
   console.log("");
 
   try {
-    // Track post count for alternating between regular and news posts
-    const counterFile = path.join(PROJECT_ROOT, ".post_counter");
-    let postCount = 1;
+    // Get next post type from rotation
+    const { type: postType, isNews } = getNextPostType();
+    const state = loadRotationState();
     
-    if (fs.existsSync(counterFile)) {
-      try {
-        postCount = parseInt(fs.readFileSync(counterFile, "utf-8").trim(), 10) || 1;
-      } catch {
-        postCount = 1;
-      }
-    }
-    
-    // Every 2nd post is a news post (posts 2, 4, 6, etc.)
-    const isNewsPost = postCount % 2 === 0;
-    
-    // Increment counter for next run
-    fs.writeFileSync(counterFile, String(postCount + 1));
-    
-    console.log(`📊 Post #${postCount} (${isNewsPost ? "NEWS" : "Regular"})`);
+    console.log(`📊 Post #${state.postCount - 1}`);
+    console.log(`📝 Type: ${POST_PREFIXES[postType as PostType] || postType}`);
+    console.log(`🔄 Remaining in rotation: ${state.remainingTypes.length}/${ROTATING_POST_TYPES.length}`);
 
-    // Step 1: Generate tweet text with Gemini
-    let tweetData;
-    if (isNewsPost) {
-      console.log("\n📰 Generating ZK NEWS post with Google Search...");
-      tweetData = await generateZKNewsPost();
-      console.log("   ✅ News post generated!");
-    } else {
-      console.log("\n📝 Generating tweet with Gemini 3.0...");
-      tweetData = await generatePrivacyTweet();
-      console.log("   ✅ Tweet generated!");
-    }
+    // Generate tweet based on type
+    console.log(`\n🎯 Generating ${postType.toUpperCase()} post...`);
+    const tweetData = await generateTweetByType(postType);
+    console.log("   ✅ Generated!")
 
     // Add prefix based on post type
     const tweetText = getTweetPrefix(tweetData) + tweetData.text;
@@ -219,8 +324,8 @@ Generated: ${new Date().toISOString()}`;
   }
 }
 
-// Posting interval in hours
-const POST_INTERVAL_HOURS = parseInt(process.env.POST_INTERVAL_HOURS || "4", 10);
+// Posting interval in hours (default 2 hours)
+const POST_INTERVAL_HOURS = parseInt(process.env.POST_INTERVAL_HOURS || "2", 10);
 const POST_INTERVAL_MS = POST_INTERVAL_HOURS * 60 * 60 * 1000;
 
 // Zcash monitoring interval in seconds
@@ -326,7 +431,9 @@ async function main(): Promise<void> {
 
   // Keep the process alive
   console.log("\n💤 Bot is running...");
-  console.log(`   📝 Thoughts/News: every ${POST_INTERVAL_HOURS} hours`);
+  console.log(`   ⏰ Posts every ${POST_INTERVAL_HOURS} hours`);
+  console.log(`   📰 News: every 2nd post`);
+  console.log(`   🔄 Rotating: ${ROTATING_POST_TYPES.join(", ")}`);
   console.log(`   🔍 Analysis: when ZEC payment received`);
 }
 

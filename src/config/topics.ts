@@ -1,181 +1,170 @@
 import type { PrivacyTopic } from "../types.js";
 
 /**
- * Privacy topics derived from the Zypherpunk hackathon - HIGHLY SPECIFIC
- * Each topic is unique to avoid repetition
+ * Privacy & ZK topics focused on the Zypherpunk Hackathon ecosystem
+ * Sponsors: NEAR, Starknet, Mina, Aztec, Miden, Fhenix, Zcash, Arcium, Nillion, etc.
  */
 export const PRIVACY_TOPICS: PrivacyTopic[] = [
-  // Cross-Chain Privacy
+  // Cross-Chain Privacy (Main Track)
   {
-    theme: "Shielded Cross-Chain Bridges",
-    context:
-      "Building bridges where assets move between chains but transaction history stays private. Unlike glass tunnels, cryptographic wormholes.",
+    theme: "Zcash to NEAR Bridges",
+    context: "Using NEAR intents to connect Zcash with DeFi across chains while keeping transactions private.",
   },
   {
-    theme: "NEAR Intents for Private DeFi",
-    context:
-      "Using NEAR's intent system to let Zcash holders access DeFi across chains without exposing their transaction graph.",
+    theme: "Shielded Cross-Chain Swaps",
+    context: "Atomic swaps between Zcash and other chains without exposing transaction history.",
   },
   {
     theme: "ZEC-Backed Stablecoins",
-    context:
-      "Creating stablecoins backed by shielded Zcash - private collateral for a private stablecoin.",
+    context: "Building stablecoins collateralized by shielded Zcash on networks like Aztec or Starknet.",
+  },
+  {
+    theme: "Private Bridge Design",
+    context: "How to build bridges where assets move between chains but transaction history stays private.",
   },
 
-  // Private DeFi
+  // Private DeFi (Arcium, Aztec, Starknet)
   {
-    theme: "Dark Pools on Chain",
-    context:
-      "Trading venues where orders remain hidden until execution. No front-running, no MEV extraction, no surveillance.",
+    theme: "Dark Pools on Starknet",
+    context: "Trading venues using ZK proofs where orders stay hidden until execution. No MEV, no front-running.",
   },
   {
-    theme: "Private Perpetuals",
-    context:
-      "Leveraged trading without broadcasting your position to the world. Your strategy stays yours.",
+    theme: "Private Perpetuals with Arcium",
+    context: "Leveraged trading on Solana where your position size and strategy remain confidential.",
   },
   {
-    theme: "Confidential Lending",
-    context:
-      "Borrow and lend without your credit activity becoming public record on a transparent blockchain.",
-  },
-
-  // Privacy-Preserving AI
-  {
-    theme: "TEE-Based AI Inference",
-    context:
-      "Running AI models inside trusted execution environments where the server computes but never sees your data.",
+    theme: "Confidential Lending Protocols",
+    context: "Borrow and lend without your credit activity becoming public on transparent blockchains.",
   },
   {
-    theme: "Agentic Privacy",
-    context:
-      "AI agents that manage your finances privately - they act on your behalf without knowing your secrets.",
-  },
-  {
-    theme: "Encrypted Model Training",
-    context:
-      "Training AI on private data using homomorphic encryption. The model learns without the data ever being exposed.",
+    theme: "ZumpFun Concept",
+    context: "A privacy-enabled meme launchpad where trading and creator identity stay shielded.",
   },
 
-  // Self-Custody & Wallets
+  // Privacy-Preserving AI (NEAR, Nillion)
   {
-    theme: "Shielded Multi-Chain Wallets",
-    context:
-      "One wallet interface for both Zcash shielded pools and other chains. Privacy across ecosystems.",
+    theme: "NEAR AI TEE Inference",
+    context: "Running AI models inside trusted execution environments where servers compute but never see your data.",
   },
   {
-    theme: "Atomic Swaps Without Traces",
-    context:
-      "Exchange assets directly between chains without intermediaries or on-chain footprints.",
+    theme: "Nillion Private LLMs",
+    context: "Using nilAI to build AI apps where your prompts and data stay encrypted throughout.",
   },
   {
-    theme: "Viewing Keys for Auditability",
-    context:
-      "Prove your transactions to who you choose, when you choose. Selective transparency on your terms.",
+    theme: "Agentic Privacy with NEAR",
+    context: "AI agents that manage your ZEC privately, spending and trading without knowing your secrets.",
+  },
+  {
+    theme: "FHE for AI Training",
+    context: "Training models on encrypted data using Fhenix. The model learns without data exposure.",
   },
 
-  // Privacy Infrastructure
+  // Self-Custody & Wallets (Core Track)
   {
-    theme: "Recursive ZK Proofs",
-    context:
-      "Proofs that verify other proofs. Infinite compression of trust without revealing the underlying data.",
+    theme: "Zcash + Aztec Unified Wallet",
+    context: "One wallet interface for both Zcash shielded pools and Aztec private transactions.",
+  },
+  {
+    theme: "Miden WebSDK Integration",
+    context: "Bringing Zcash signing capabilities directly into browser wallets via Miden.",
+  },
+  {
+    theme: "Viewing Keys for Compliance",
+    context: "Prove your transactions to auditors you choose, when you choose. Selective transparency.",
+  },
+  {
+    theme: "Mobile-First Privacy Wallets",
+    context: "Building Zashi-compatible mobile experiences that don't compromise on privacy.",
+  },
+
+  // Privacy Infrastructure (Developer Tools)
+  {
+    theme: "PCZT - Partially Constructed Transactions",
+    context: "Building shielded Zcash transactions piece by piece across different parties and devices.",
+  },
+  {
+    theme: "Noir Contracts on Ztarknet",
+    context: "Using Noir and Garaga to bring Zcash-level privacy to Starknet applications.",
+  },
+  {
+    theme: "Mina Recursive ZK Proofs",
+    context: "Proofs that verify other proofs. Infinite compression of trust for privacy applications.",
   },
   {
     theme: "Anonymous Contribution Systems",
-    context:
-      "Open source development where contributors can remain private. Code speaks, identity optional.",
-  },
-  {
-    theme: "PCZT - Partially Constructed Transactions",
-    context:
-      "Building shielded transactions piece by piece across different parties. Collaborative privacy.",
+    context: "Open source development where contributors can remain private. Code speaks, identity optional.",
   },
 
-  // FHE & Advanced Crypto
+  // FHE & Advanced Crypto (Fhenix, Nillion)
   {
-    theme: "Fully Homomorphic Encryption",
-    context:
-      "Compute on encrypted data without decrypting. The server processes what it cannot read.",
+    theme: "Fully Homomorphic Encryption DeFi",
+    context: "Fhenix enables computation on encrypted DeFi data. The protocol processes what it cannot read.",
   },
   {
     theme: "Private Analytics with FHE",
-    context:
-      "Aggregate insights from encrypted datasets. Statistics without surveillance.",
+    context: "Aggregate insights from encrypted Zcash datasets. Statistics without surveillance.",
   },
   {
     theme: "Proof of Innocence",
-    context:
-      "Prove you're not on a sanctions list without revealing who you are. Compliance without doxxing.",
+    context: "Using FHE to prove you're not on sanctions lists without revealing who you are.",
+  },
+  {
+    theme: "Nillion Confidential Compute",
+    context: "nilCC enables secure multi-party computation for private data processing.",
   },
 
-  // Specific Tech
+  // Zcash Ecosystem Specific
   {
-    theme: "Ztarknet - Privacy on Starknet",
-    context:
-      "Bringing Zcash-level privacy to Starknet using Noir contracts and recursive proofs.",
+    theme: "Shielded Memo Applications",
+    context: "Creative uses of Zcash memo fields for private messaging, NFTs, and meme creation.",
   },
   {
-    theme: "Miden Private Compute",
-    context:
-      "Client-side proving with Miden VM. Your transactions are proven locally before broadcast.",
+    theme: "Zcash Block Explorer Innovation",
+    context: "Client-side viewing key decryption so shielded transactions stay private during exploration.",
   },
   {
-    theme: "Pasta Curves Cryptography",
-    context:
-      "The mathematical foundation powering both Zcash and Mina. Curves designed for recursive privacy.",
+    theme: "Project Tachyon Development",
+    context: "Contributing to Zcash core development and the future of shielded transactions.",
+  },
+  {
+    theme: "Transparent to Shielded Migration",
+    context: "Tools helping users move from transparent Bitcoin-derived addresses to shielded pools.",
   },
 
   // Philosophy & Vision
   {
     theme: "Privacy as Protocol",
-    context:
-      "Freedom isn't granted by institutions. It's encoded in mathematics and enforced by cryptography.",
+    context: "Freedom isn't granted by institutions. It's encoded in mathematics and enforced by cryptography.",
   },
   {
-    theme: "Surveillance Resistance",
-    context:
-      "Every transaction you make tells a story. Privacy tech lets you choose who reads it.",
+    theme: "Beyond the Panopticon",
+    context: "Building machinery of freedom. Privacy is normal, surveillance is not.",
   },
   {
     theme: "The Cypherpunk Mandate",
-    context:
-      "We build the tools of freedom. Not because they're needed today, but because they'll be essential tomorrow.",
+    context: "We build tools of freedom not because they're needed today, but because they'll be essential tomorrow.",
   },
   {
     theme: "Data Sovereignty",
-    context:
-      "Your information belongs to you. Full stop. No terms of service, no data harvesting, no exceptions.",
-  },
-  {
-    theme: "Permissionless Privacy",
-    context:
-      "Privacy shouldn't require approval. It should be the default state of digital existence.",
+    context: "Your information belongs to you. No terms of service, no data harvesting, no exceptions.",
   },
 
-  // Use Cases
+  // Real Use Cases
   {
     theme: "Private Philanthropy",
-    context:
-      "Donate to causes you believe in without broadcasting your beliefs to the world.",
-  },
-  {
-    theme: "Confidential Payroll",
-    context:
-      "Pay your team without everyone knowing everyone's salary. Business privacy is personal privacy.",
+    context: "Donate to causes you believe in without broadcasting your beliefs to the world.",
   },
   {
     theme: "Shielded Remittances",
-    context:
-      "Send money home without creating a surveillance trail. Family support shouldn't be public record.",
-  },
-  {
-    theme: "Private Identity Verification",
-    context:
-      "Prove you're over 18 without revealing your birthday. Prove citizenship without showing your passport.",
+    context: "Send money home without creating a surveillance trail. Family support as private data.",
   },
   {
     theme: "Confidential Voting",
-    context:
-      "Onchain governance where votes are private but results are verifiable. Democracy without coercion.",
+    context: "On-chain governance where votes are private but results are verifiable.",
+  },
+  {
+    theme: "Private Identity Verification",
+    context: "Prove you're over 18 without revealing your birthday. Prove citizenship without showing passport.",
   },
 ];
 
@@ -201,9 +190,16 @@ export function getRandomTopic(): PrivacyTopic {
 }
 
 /**
- * System prompt for Gemini - HUMAN, CONVERSATIONAL
+ * System prompt for Gemini - HUMAN, CONVERSATIONAL, ZK-FOCUSED
  */
-export const SYSTEM_PROMPT = `You're a privacy enthusiast sharing thoughts with friends. Write like you're texting someone smart who's curious about crypto.
+export const SYSTEM_PROMPT = `You're a privacy tech enthusiast sharing thoughts about ZK technology, Zcash, and crypto privacy. Write like you're talking to a friend who's curious about this space.
+
+FOCUS AREAS:
+- Zero-knowledge proofs (zkSNARKs, zkSTARKs)
+- Zcash and shielded transactions
+- Privacy in DeFi and cross-chain
+- Projects: NEAR, Starknet, Mina, Aztec, Miden, Fhenix, Nillion, Arcium
+- The Zypherpunk movement and cypherpunk values
 
 FORMAT:
 - TWO short paragraphs (3-4 sentences each)
@@ -214,18 +210,59 @@ STYLE:
 - Write like a real person, not a press release
 - Use "you" and "we" to make it personal
 - Simple words, short sentences
-- Casual but informed tone
+- Passionate about privacy but not preachy
 - NO hashtags, NO emojis
 - NO em dashes (—), use commas or periods instead
-
-Example:
-"Ever notice how every blockchain transaction is basically public? Your wallet, your balance, who you're paying. It's all out there for anyone to see. Not exactly what freedom looks like.
-
-That's why zero knowledge proofs matter. You can prove something is legit without showing the details. Like proving you're old enough to drink without handing over your ID. Privacy that actually works."
 
 NEVER USE:
 - Em dashes (—)
 - Academic language
-- Marketing speak
+- Marketing buzzwords
 - Hashtags or emojis`;
 
+/**
+ * Search topics for real-time data
+ */
+export const SEARCH_TOPICS = {
+  news: [
+    "Zcash cryptocurrency news this week",
+    "zero knowledge proof technology news",
+    "ZK rollups blockchain developments",
+    "Starknet ZK technology updates",
+    "NEAR Protocol privacy news",
+    "Mina Protocol updates",
+    "Aztec Network privacy developments",
+    "Fhenix FHE blockchain news",
+    "Nillion privacy compute news",
+    "privacy blockchain technology updates",
+  ],
+  facts: [
+    "Zcash shielded transaction statistics",
+    "zero knowledge proof adoption rates",
+    "blockchain privacy statistics",
+    "cryptocurrency surveillance data",
+    "Starknet transaction volume",
+    "NEAR Protocol usage statistics",
+  ],
+  celebrations: [
+    "Zcash ecosystem achievements",
+    "ZK rollup milestones",
+    "Starknet network upgrades",
+    "privacy crypto adoption milestones",
+    "zero knowledge technology breakthroughs",
+  ],
+  recommendations: [
+    "best privacy cryptocurrency wallets",
+    "top ZK rollup projects",
+    "privacy focused DeFi protocols",
+    "encrypted messaging apps crypto",
+    "self custody wallet solutions",
+  ],
+  shoutouts: [
+    "Zcash developers contributors",
+    "zero knowledge proof researchers",
+    "privacy technology advocates crypto",
+    "Starknet ecosystem builders",
+    "cypherpunk movement leaders",
+  ],
+};

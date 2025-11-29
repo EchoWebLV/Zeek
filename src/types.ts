@@ -12,6 +12,21 @@ export interface PrivacyTopic {
   context: string;
 }
 
+/** Post types for varied content */
+export type PostType = 
+  | "thoughts" 
+  | "news" 
+  | "analysis" 
+  | "tip" 
+  | "question" 
+  | "quote" 
+  | "prediction" 
+  | "fact" 
+  | "celebration" 
+  | "hottake" 
+  | "recommendation" 
+  | "shoutout";
+
 /** Generated tweet data */
 export interface TweetData {
   text: string;
@@ -20,6 +35,7 @@ export interface TweetData {
   sourceUrl?: string;
   isNews?: boolean;
   isAnalysis?: boolean;
+  postType?: PostType;
 }
 
 /** Twitter API credentials */

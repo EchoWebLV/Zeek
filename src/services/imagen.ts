@@ -62,30 +62,29 @@ export async function generateImage(
   // Load the Zeke sprite
   const spriteBase64 = loadSpriteBase64();
 
-  const prompt = `Create a vintage propaganda-style cartoon illustration featuring this character in this scene: ${sceneDescription}
+  const prompt = `Create a colorful cartoon illustration featuring this character in this scene: ${sceneDescription}
 
-CHARACTER "ZEKE" (MUST MATCH EXACTLY):
-- Round BLACK SUNGLASSES (always wearing them)
-- Slicked-back DARK OLIVE hair (1950s pompadour style)
-- OLIVE-TAN skin tone (muted, not bright)
-- Dark OLIVE LEATHER JACKET (open/unbuttoned)
-- BLACK t-shirt with YELLOW "Z" logo on chest
-- Olive-brown pants
+CHARACTER "ZEKE" (MATCH THE REFERENCE IMAGE EXACTLY):
+- Round dark SUNGLASSES
+- Slicked-back dark hair (1950s style)
+- Olive/greenish skin tone (monochromatic, muted)
+- Dark olive-green JACKET (open)
+- Dark t-shirt with cream/yellow "Z" logo
+- Olive-green pants
 - Dark boots
-- Confident smile, thumbs up pose
-- Retro Vault Boy / atomic age mascot style
+- Friendly smile, expressive poses
+- ENTIRE CHARACTER is monochromatic olive-green (like the reference)
+- Match the retro cartoon mascot style from the reference
 
-COLOR PALETTE (CRITICAL):
-- ENTIRE IMAGE uses MUTED OLIVE-GREEN and SEPIA tones only
-- Like a faded vintage military poster or old photograph with green tint
-- NO bright greens, NO vibrant colors
-- Think: army surplus, 1950s propaganda poster, aged paper
-- Background should also be in muted olive/sepia/tan tones
-- Monochromatic vintage aesthetic
+BACKGROUND & SCENE:
+- Background can be COLORFUL and VIBRANT
+- Use any colors that fit the scene (blues, purples, oranges, neons, etc.)
+- Be creative with lighting, atmosphere, and mood
+- Contrast Zeke's muted olive tones against colorful environments
 
-STYLE: Retro 1950s cartoon mascot, vintage propaganda poster, clean lines, atomic age aesthetic, NO modern bright colors
+STYLE: Clean cartoon illustration, match the reference character exactly while scene is creative and colorful
 
-Text is OK when it fits the scene (warning signs, labels, symbols). Keep it minimal and readable.`;
+Text is OK when it fits the scene (warning signs, labels, symbols).`;
 
   try {
     let contents: string | ImageContent[];

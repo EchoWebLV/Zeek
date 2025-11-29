@@ -47,16 +47,18 @@ export async function generateZKNewsPost(): Promise<TweetData> {
   }
 
   const newsTopics = [
-    "zero knowledge proof technology news",
-    "ZK rollups blockchain news",
-    "privacy blockchain technology updates",
-    "Zcash cryptocurrency news",
-    "zkSNARKs zkSTARKs developments",
-    "private blockchain transactions news",
-    "homomorphic encryption blockchain",
-    "Starknet ZK technology news",
+    "Zcash cryptocurrency news this week",
+    "Starknet network updates",
+    "zero knowledge rollup developments",
+    "NEAR Protocol privacy features",
+    "Aztec Network news",
+    "Miden VM developments",
+    "Fhenix FHE blockchain news",
+    "Nillion confidential compute news",
+    "zkSNARKs zkSTARKs technology news",
+    "private DeFi protocol launches",
     "Mina Protocol updates",
-    "Aztec Network privacy news",
+    "Arcium encrypted compute news",
   ];
 
   const randomTopic = newsTopics[Math.floor(Math.random() * newsTopics.length)];
@@ -267,9 +269,439 @@ JSON format:
 }
 
 /**
+ * Generate a privacy Tip tweet - ZK/Zcash focused
+ */
+export async function generateTipTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const tipTopics = [
+    "using Zcash shielded transactions",
+    "protecting transaction metadata",
+    "avoiding address reuse in crypto",
+    "setting up a hardware wallet for Zcash",
+    "using viewing keys for auditing",
+    "choosing between transparent and shielded pools",
+    "private DeFi best practices",
+    "cross-chain privacy when bridging",
+    "securing your seed phrase",
+    "using encrypted memos in Zcash",
+    "privacy when using DEXs",
+    "ZK wallet security tips",
+  ];
+  const topic = tipTopics[Math.floor(Math.random() * tipTopics.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Give a practical crypto privacy tip about: ${topic}
+
+Context: You're part of the ZK/Zcash privacy community. Give actionable advice.
+Write ONE helpful tip in 2-3 sentences. Be specific and technical but accessible.
+Write casually like you're helping a fellow cypherpunk. No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) demonstrating the tip.
+
+JSON: {"tweet": "Your tip here", "imageScene": "Zeke [demonstrating tip]"}`,
+    config: { responseMimeType: "application/json" },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: `Tip: ${topic}`, context: topic },
+    imagePrompt: result.imageScene || "",
+    postType: "tip",
+  };
+}
+
+/**
+ * Generate a Question tweet - ZK/privacy focused discussion
+ */
+export async function generateQuestionTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const questionThemes = [
+    "ZK rollups vs privacy chains",
+    "Zcash shielded adoption",
+    "cross-chain privacy tradeoffs",
+    "FHE vs ZK proofs",
+    "privacy in DeFi",
+    "regulatory compliance vs privacy",
+    "future of private transactions",
+    "Starknet vs Aztec approaches",
+    "self-custody challenges",
+    "private AI computation",
+  ];
+  const theme = questionThemes[Math.floor(Math.random() * questionThemes.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Ask a thought-provoking question about: ${theme}
+
+Context: You're speaking to the ZK/Zcash/privacy crypto community.
+The question should spark genuine discussion among builders and users.
+Could be about technical tradeoffs, adoption challenges, or philosophical aspects.
+Keep it to 1-2 sentences. No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) looking curious or thinking.
+
+JSON: {"tweet": "Your question here?", "imageScene": "Zeke [thinking/curious pose]"}`,
+    config: { responseMimeType: "application/json" },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Community Question", context: theme },
+    imagePrompt: result.imageScene || "",
+    postType: "question",
+  };
+}
+
+/**
+ * Generate a Quote tweet - cypherpunk/ZK community focused
+ */
+export async function generateQuoteTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const quoteSources = [
+    "Zooko Wilcox quotes about privacy",
+    "cypherpunk manifesto quotes",
+    "Eric Hughes privacy quotes",
+    "Vitalik Buterin on ZK proofs",
+    "Eli Ben-Sasson on zero knowledge",
+    "Edward Snowden on privacy",
+    "Tim May crypto anarchy quotes",
+    "Nick Szabo on cryptography",
+    "Balaji Srinivasan on privacy tech",
+  ];
+  const source = quoteSources[Math.floor(Math.random() * quoteSources.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for a real quote: ${source}
+
+Must be a REAL quote with correct attribution from someone in crypto/privacy/cypherpunk space.
+Share the quote and add 1-2 sentences connecting it to current ZK/privacy developments.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) inspired by the quote.
+
+JSON: {"tweet": "\\"The quote here\\" - Author Name\\n\\nYour brief commentary.", "imageScene": "Zeke [action related to quote]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Quote", context: source },
+    imagePrompt: result.imageScene || "",
+    postType: "quote",
+  };
+}
+
+/**
+ * Generate a Prediction tweet - ZK/privacy future focused
+ */
+export async function generatePredictionTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const predictionTopics = [
+    "Zcash shielded adoption",
+    "ZK rollup dominance",
+    "privacy by default in crypto",
+    "Starknet ecosystem growth",
+    "FHE mainstream adoption",
+    "cross-chain privacy bridges",
+    "private DeFi market size",
+    "NEAR privacy features",
+    "Aztec and Miden development",
+    "regulatory approach to privacy coins",
+  ];
+  const topic = predictionTopics[Math.floor(Math.random() * predictionTopics.length)];
+  
+  const timeframes = ["by end of 2025", "in the next 2 years", "by 2027"];
+  const timeframe = timeframes[Math.floor(Math.random() * timeframes.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for current trends about ${topic}, then make a bold prediction for ${timeframe}.
+
+Context: You're deeply embedded in the ZK/Zcash/privacy crypto space.
+Based on real current developments, what do you think will happen?
+Write 2-3 sentences. Sound confident but not arrogant. Be specific.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) looking into the future.
+
+JSON: {"tweet": "Your prediction here", "imageScene": "Zeke [futuristic/visionary pose]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Prediction", context: `${topic} ${timeframe}` },
+    imagePrompt: result.imageScene || "",
+    postType: "prediction",
+  };
+}
+
+/**
+ * Generate a Fact tweet - ZK/Zcash statistics focused
+ */
+export async function generateFactTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const factTopics = [
+    "Zcash shielded transaction percentage",
+    "ZK rollup transaction volume statistics",
+    "Starknet network activity data",
+    "blockchain analysis company tracking rates",
+    "cryptocurrency privacy adoption statistics",
+    "NEAR Protocol usage statistics",
+    "zero knowledge proof computation costs",
+    "Ethereum L2 privacy features",
+    "private DeFi total value locked",
+    "Chainalysis cryptocurrency surveillance data",
+  ];
+  const topic = factTopics[Math.floor(Math.random() * factTopics.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for a real, current statistic about: ${topic}
+
+Context: You're sharing data relevant to the ZK/privacy crypto community.
+Share ONE interesting fact with numbers and context. Keep it to 2-3 sentences.
+Make it surprising or relevant to privacy advocates.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) reacting to the fact.
+
+JSON: {"tweet": "Your fact here", "imageScene": "Zeke [reaction to surprising info]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Fact", context: topic },
+    imagePrompt: result.imageScene || "",
+    postType: "fact",
+  };
+}
+
+/**
+ * Generate a Celebration tweet - ZK/Zcash ecosystem wins
+ */
+export async function generateCelebrationTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const celebrationTopics = [
+    "Zcash network upgrade news",
+    "Starknet ecosystem milestone",
+    "ZK rollup adoption achievement",
+    "NEAR Protocol privacy feature launch",
+    "Aztec network development progress",
+    "Mina Protocol update",
+    "zero knowledge technology breakthrough",
+    "privacy DeFi protocol launch",
+    "Fhenix FHE development",
+    "Nillion confidential compute news",
+  ];
+  const topic = celebrationTopics[Math.floor(Math.random() * celebrationTopics.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for recent positive news about: ${topic}
+
+Context: You're part of the ZK/Zcash privacy community celebrating ecosystem wins.
+Find a real recent achievement: network upgrade, adoption milestone, new feature, or community win.
+Celebrate it genuinely in 2-3 sentences. Be excited but authentic.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) celebrating.
+
+JSON: {"tweet": "Your celebration here", "imageScene": "Zeke [celebrating/excited pose]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Celebration", context: "" },
+    imagePrompt: result.imageScene || "",
+    postType: "celebration",
+  };
+}
+
+/**
+ * Generate a Hot Take tweet - ZK/privacy controversial opinions
+ */
+export async function generateHotTakeTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const hotTakeTopics = [
+    "privacy coins vs transparent chains",
+    "ZK rollups vs optimistic rollups",
+    "Zcash vs Monero approach",
+    "DeFi privacy requirements",
+    "L1 vs L2 privacy solutions",
+    "compliant privacy vs true privacy",
+    "centralized exchanges and privacy",
+    "stablecoin transparency requirements",
+    "privacy as a feature vs default",
+    "Ethereum privacy roadmap",
+  ];
+  const topic = hotTakeTopics[Math.floor(Math.random() * hotTakeTopics.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Share a bold opinion about: ${topic}
+
+Context: You're a privacy maximalist in the ZK/Zcash community.
+Something that might spark debate among crypto builders. Not offensive, just opinionated.
+Write 2-3 sentences. Be confident and direct. Take a clear stance.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) looking bold/confident.
+
+JSON: {"tweet": "Your hot take here", "imageScene": "Zeke [confident/bold pose]"}`,
+    config: { responseMimeType: "application/json" },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Hot Take", context: topic },
+    imagePrompt: result.imageScene || "",
+    postType: "hottake",
+  };
+}
+
+/**
+ * Generate a Recommendation tweet - ZK/privacy tools and projects
+ */
+export async function generateRecommendationTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const categories = [
+    "Zcash wallet like Zashi or YWallet",
+    "ZK development framework",
+    "privacy-focused DEX",
+    "shielded transaction tool",
+    "zero knowledge learning resource",
+    "privacy browser for crypto",
+    "encrypted communication for crypto teams",
+    "hardware wallet with Zcash support",
+    "ZK rollup explorer or tool",
+    "private DeFi protocol",
+  ];
+  const category = categories[Math.floor(Math.random() * categories.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for and recommend: ${category}
+
+Context: You're recommending tools to the ZK/Zcash privacy community.
+Briefly explain what it is and why it's good. Keep it to 2-3 sentences.
+Be genuine, like recommending something to a fellow builder. Mention actual names.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) using or recommending the tool.
+
+JSON: {"tweet": "Your recommendation here", "imageScene": "Zeke [using/showing tool]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: `Recommendation: ${category}`, context: category },
+    imagePrompt: result.imageScene || "",
+    postType: "recommendation",
+  };
+}
+
+/**
+ * Generate a Shoutout tweet - ZK/Zcash ecosystem builders
+ */
+export async function generateShoutoutTweet(): Promise<TweetData> {
+  if (!ai) throw new Error("Gemini not initialized");
+
+  const shoutoutTargets = [
+    "Zcash core developers and contributors",
+    "Starknet ecosystem builders",
+    "ZK proof researchers",
+    "NEAR Protocol privacy team",
+    "Aztec Labs developers",
+    "Miden team progress",
+    "Electric Coin Company work",
+    "Project Tachyon contributors",
+    "Fhenix FHE developers",
+    "privacy crypto educators",
+    "Zcash Community Grants recipients",
+  ];
+  const target = shoutoutTargets[Math.floor(Math.random() * shoutoutTargets.length)];
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Search for: ${target}
+
+Context: You're giving a shoutout to builders in the ZK/Zcash privacy ecosystem.
+Find a specific person, team, or project doing good work. Give them genuine recognition.
+Explain briefly what they're doing and why it matters. Keep it to 2-3 sentences.
+Be appreciative and specific. Mention actual names.
+No hashtags, no emojis, no em dashes.
+
+Also describe an image scene for Zeke (retro mascot, olive-green tones) giving props/applauding.
+
+JSON: {"tweet": "Your shoutout here", "imageScene": "Zeke [applauding/showing respect]"}`,
+    config: { 
+      responseMimeType: "application/json",
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const result = JSON.parse(response.text ?? "{}");
+  return {
+    text: cleanText(result.tweet),
+    topic: { theme: "Shoutout", context: target },
+    imagePrompt: result.imageScene || "",
+    postType: "shoutout",
+  };
+}
+
+/**
+ * Clean up tweet text
+ */
+function cleanText(text: string): string {
+  return (text || "")
+    .replace(/#\w+/g, "")
+    .replace(/[\u{1F600}-\u{1F6FF}]/gu, "")
+    .replace(/—/g, ", ")
+    .replace(/–/g, ", ")
+    .trim();
+}
+
+/**
  * Zeke character description for consistent image generation
  */
-const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke" in MUTED OLIVE/SEPIA monochromatic style like a vintage military poster: round black sunglasses, slicked-back dark olive hair, olive-tan skin, dark olive leather jacket (open), black t-shirt with yellow "Z", giving thumbs up, confident smile. ENTIRE image uses ONLY muted olive-green and sepia tones - NO bright colors, NO vibrant greens`;
+const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke": round dark sunglasses, slicked-back dark hair, monochromatic olive-green skin and clothes (entire character is olive-toned), dark jacket (open), dark t-shirt with cream "Z" logo, olive pants, dark boots. Expressive and friendly`;
 
 /**
  * Enhance an image prompt for better Imagen results
@@ -277,6 +709,6 @@ const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke" in MUTED OLIVE/SEPIA monochr
  */
 export function enhanceImagePrompt(basePrompt: string, _topic: PrivacyTopic): string {
   // Create scene-specific prompt with Zeke as the main character
-  return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: vintage propaganda poster, muted olive-sepia color palette, retro cartoon illustration, monochromatic green tones, Fallout Vault Boy inspired, 1950s atomic age aesthetic, NO bright colors`;
+  return `${ZEKE_CHARACTER}. Scene: ${basePrompt}. Style: colorful cartoon illustration, Zeke stays monochromatic olive-green but background is vibrant and creative`;
 }
 
