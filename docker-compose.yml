@@ -1,13 +1,48 @@
 version: '3.8'
 
 services:
-  # Full version with Zingo CLI (for live mode)
-  zeke-live:
+  # ==========================================================================
+  # Full Twitter Bot + Zcash Monitoring (PRODUCTION)
+  # Posts to Twitter AND monitors for shielded ZEC payments with memos
+  # ==========================================================================
+  zeke:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Google AI (required)
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      # Twitter/X API (required for posting)
+      - X_API_KEY=${X_API_KEY}
+      - X_API_SECRET=${X_API_SECRET}
+      - X_ACCESS_TOKEN=${X_ACCESS_TOKEN}
+      - X_ACCESS_SECRET=${X_ACCESS_SECRET}
+      # Zcash Shielded Messages (required for paid analysis)
+      - ZCASH_SEED_PHRASE=${ZCASH_SEED_PHRASE}
+      - ZCASH_WALLET_BIRTHDAY=${ZCASH_WALLET_BIRTHDAY:-2400000}
+      - ZCASH_NETWORK=${ZCASH_NETWORK:-mainnet}
+      - LIGHTWALLETD_URL=${LIGHTWALLETD_URL:-https://mainnet.lightwalletd.com:9067}
+      - MIN_PAYMENT_ZEC=${MIN_PAYMENT_ZEC:-0.001}
+      # Intervals
+      - POST_INTERVAL_HOURS=${POST_INTERVAL_HOURS:-2}
+      - ZCASH_POLL_INTERVAL=${ZCASH_POLL_INTERVAL:-60}
+    volumes:
+      - ./test:/app/test
+      - zingo-data:/app/.zingo
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Blog Service - Live Mode (Zcash network)
+  # Generates blog posts from shielded memo requests
+  # ==========================================================================
+  zeke-blog-live:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - ZCASH_SEED_PHRASE=${ZCASH_SEED_PHRASE}
+      - ZCASH_WALLET_BIRTHDAY=${ZCASH_WALLET_BIRTHDAY:-2400000}
       - ZCASH_NETWORK=${ZCASH_NETWORK:-mainnet}
       - LIGHTWALLETD_URL=${LIGHTWALLETD_URL:-https://mainnet.lightwalletd.com:9067}
       - MIN_PAYMENT_ZEC=${MIN_PAYMENT_ZEC:-0.001}
@@ -15,9 +50,14 @@ services:
     volumes:
       - ./testBlog:/app/testBlog
       - zingo-data:/app/.zingo
+    command: ["node", "dist/blog.js", "--live"]
     restart: unless-stopped
+    profiles:
+      - blog
 
-  # Slim version for demo mode
+  # ==========================================================================
+  # Demo Mode - No real Zcash, for testing
+  # ==========================================================================
   zeke-demo:
     build:
       context: .
@@ -27,9 +67,13 @@ services:
     volumes:
       - ./testBlog:/app/testBlog
     command: ["node", "dist/blog.js", "--demo"]
+    profiles:
+      - demo
 
-  # Twitter bot
-  zeke-twitter:
+  # ==========================================================================
+  # Twitter Bot Only (no Zcash monitoring)
+  # ==========================================================================
+  zeke-twitter-only:
     build:
       context: .
       dockerfile: Dockerfile.slim
@@ -39,13 +83,11 @@ services:
       - X_API_SECRET=${X_API_SECRET}
       - X_ACCESS_TOKEN=${X_ACCESS_TOKEN}
       - X_ACCESS_SECRET=${X_ACCESS_SECRET}
-      - MODE=${MODE:-local}
     volumes:
       - ./test:/app/test
     command: ["node", "dist/index.js"]
+    profiles:
+      - twitter-only
 
 volumes:
   zingo-data:
-
-
-

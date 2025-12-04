@@ -122,11 +122,13 @@ export function walletExists(): boolean {
  * @param command - The command to run
  * @param args - Additional arguments
  * @param stdinInput - Optional input to write to stdin (for interactive commands)
+ * @param waitSync - Whether to wait for sync to complete before running command (default true)
  */
 async function runZingoCommand(
   command: string, 
   args: string[] = [],
-  stdinInput?: string
+  stdinInput?: string,
+  waitSync: boolean = true
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const serverArg = config?.lightwalletdUrl 
@@ -141,6 +143,7 @@ async function runZingoCommand(
       ...serverArg,
       ...networkArg,
       "--data-dir", ZINGO_DATA_DIR,
+      ...(waitSync ? ["--waitsync"] : []),
       command,
       ...args
     ];
@@ -191,8 +194,8 @@ async function runZingoCommand(
 /**
  * Initialize wallet from seed phrase
  * 
- * The seed phrase is passed via stdin to the zingo-cli restore command.
- * If a wallet already exists, it will be loaded instead of restored.
+ * Uses zingo-cli --seed command-line argument to create/restore wallet.
+ * If a wallet already exists with matching seed, it will be used.
  * 
  * @param seedPhrase - BIP39 mnemonic seed phrase (typically 24 words)
  * @param birthday - Optional wallet birthday (block height) for faster sync
@@ -212,44 +215,32 @@ export async function initWalletFromSeed(seedPhrase: string, birthday?: number):
   try {
     // Check if wallet already exists
     if (walletExists()) {
-      console.log("   📂 Existing wallet found, loading...");
+      console.log("   📂 Existing wallet found, syncing...");
       // Try to sync to verify wallet is working
       try {
-        await syncWallet();
-        console.log("   ✅ Existing wallet loaded successfully");
-        return true;
+        const syncResult = await syncWallet();
+        if (syncResult.synced) {
+          console.log("   ✅ Existing wallet synced successfully");
+          return true;
+        }
       } catch (syncError) {
-        console.log("   ⚠️  Existing wallet failed to sync, will try to restore");
+        console.log("   ⚠️  Existing wallet failed to sync, will recreate");
         // Delete existing wallet data to allow restore
         const walletFile = path.join(ZINGO_DATA_DIR, "zingo-wallet.dat");
-        const walletDir = path.join(ZINGO_DATA_DIR, "wallet");
         if (fs.existsSync(walletFile)) fs.unlinkSync(walletFile);
-        if (fs.existsSync(walletDir)) fs.rmSync(walletDir, { recursive: true });
       }
     }
 
-    // Build restore arguments
-    const restoreArgs: string[] = [];
-    if (birthday) {
-      restoreArgs.push("--birthday", birthday.toString());
-    }
-
-    console.log("   🔐 Restoring wallet from seed phrase...");
+    // Create wallet using --seed command-line argument
+    console.log("   🔐 Creating wallet from seed phrase...");
     
-    // Pass the seed phrase via stdin
-    // zingo-cli restore expects the seed phrase on stdin followed by newline
-    await runZingoCommand("restore", restoreArgs, seedPhrase.trim() + "\n");
-    
-    console.log("   ✅ Wallet restored from seed phrase");
-    
-    // Initial sync after restore
-    console.log("   🔄 Performing initial sync...");
-    await syncWallet();
+    const output = await runZingoCommandDirect(seedPhrase.trim(), birthday);
+    console.log("   ✅ Wallet created from seed phrase");
     
     // Get and display wallet addresses
     const addresses = await getAddresses();
     if (addresses.unified) {
-      console.log(`   📬 Unified Address: ${addresses.unified.substring(0, 20)}...`);
+      console.log(`   📬 Unified Address: ${addresses.unified.substring(0, 40)}...`);
     }
     
     return true;
@@ -257,6 +248,62 @@ export async function initWalletFromSeed(seedPhrase: string, birthday?: number):
     console.error("   ❌ Failed to initialize wallet:", error);
     return false;
   }
+}
+
+/**
+ * Run zingo-cli directly with seed phrase as command-line argument
+ */
+async function runZingoCommandDirect(seedPhrase: string, birthday?: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const serverArg = config?.lightwalletdUrl 
+      ? ["--server", config.lightwalletdUrl] 
+      : [];
+    
+    const networkArg = config?.network === "testnet" 
+      ? ["--chain", "testnet"] 
+      : ["--chain", "mainnet"];
+
+    const birthdayArg = birthday ? ["--birthday", birthday.toString()] : [];
+
+    const fullArgs = [
+      ...serverArg,
+      ...networkArg,
+      "--data-dir", ZINGO_DATA_DIR,
+      "--seed", seedPhrase,
+      ...birthdayArg,
+      "--waitsync",
+      "balance"
+    ];
+
+    console.log(`   Running: zingo-cli --seed [REDACTED] --waitsync balance`);
+
+    const proc = spawn("zingo-cli", fullArgs, {
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new Error(`zingo-cli exited with code ${code}: ${stderr || stdout}`));
+      }
+    });
+
+    proc.on("error", (err) => {
+      reject(err);
+    });
+  });
 }
 
 /**
@@ -366,6 +413,12 @@ export async function getNotes(): Promise<ShieldedTransaction[]> {
 
 /**
  * Parse notes output from zingo-cli
+ * 
+ * Zingo CLI returns notes in this format:
+ * {
+ *   "orchard_notes": { "note_summaries": [...] },
+ *   "sapling_notes": { "note_summaries": [...] }
+ * }
  */
 function parseNotesOutput(output: string): ShieldedTransaction[] {
   const transactions: ShieldedTransaction[] = [];
@@ -374,69 +427,97 @@ function parseNotesOutput(output: string): ShieldedTransaction[] {
     // Zingo outputs JSON
     const data = JSON.parse(output);
     
-    // Parse unspent notes
-    if (data.unspent_sapling_notes) {
-      for (const note of data.unspent_sapling_notes) {
-        if (!processedTxids.has(note.txid)) {
+    // Parse orchard notes (new format with note_summaries)
+    const orchardNotes = data.orchard_notes?.note_summaries || data.unspent_orchard_notes || [];
+    for (const note of orchardNotes) {
+      if (!processedTxids.has(note.txid)) {
+        const memo = note.memo || "";
+        // Only include notes with non-empty memos
+        if (memo && memo.trim().length > 0) {
           transactions.push({
             txid: note.txid,
-            blockHeight: note.height || 0,
-            timestamp: new Date(note.datetime || Date.now()),
+            blockHeight: parseInt(note.status?.match(/height (\d+)/)?.[1] || "0") || note.height || 0,
+            timestamp: new Date((note.time || note.datetime || Date.now() / 1000) * 1000),
             amountZatoshis: BigInt(note.value || 0),
             amountZec: (note.value || 0) / 100_000_000,
-            memo: decodeMemo(note.memo || ""),
+            memo: decodeMemo(memo),
             processed: false,
           });
         }
       }
     }
     
-    // Parse unspent orchard notes
-    if (data.unspent_orchard_notes) {
-      for (const note of data.unspent_orchard_notes) {
-        if (!processedTxids.has(note.txid)) {
+    // Parse sapling notes
+    const saplingNotes = data.sapling_notes?.note_summaries || data.unspent_sapling_notes || [];
+    for (const note of saplingNotes) {
+      if (!processedTxids.has(note.txid)) {
+        const memo = note.memo || "";
+        if (memo && memo.trim().length > 0) {
           transactions.push({
             txid: note.txid,
-            blockHeight: note.height || 0,
-            timestamp: new Date(note.datetime || Date.now()),
+            blockHeight: parseInt(note.status?.match(/height (\d+)/)?.[1] || "0") || note.height || 0,
+            timestamp: new Date((note.time || note.datetime || Date.now() / 1000) * 1000),
             amountZatoshis: BigInt(note.value || 0),
             amountZec: (note.value || 0) / 100_000_000,
-            memo: decodeMemo(note.memo || ""),
+            memo: decodeMemo(memo),
             processed: false,
           });
         }
       }
     }
-  } catch {
+  } catch (e) {
     // Try to parse as plain text if JSON fails
-    console.log("   Parsing notes as text...");
+    console.log("   ⚠️  Could not parse notes as JSON:", (e as Error).message);
   }
   
   return transactions;
 }
 
 /**
- * Decode memo from hex or base64
+ * Decode memo from various formats
+ * 
+ * Zingo CLI may return memos in different formats:
+ * - Plain text (already decoded)
+ * - Hex string
+ * - Base64 string
  */
 function decodeMemo(memo: string): string {
   if (!memo) return "";
   
+  // Clean up the memo string
+  const cleaned = memo.trim();
+  if (!cleaned) return "";
+  
+  // If it looks like readable text (contains spaces, letters), return as-is
+  if (/^[\x20-\x7E\s]+$/.test(cleaned) && /[a-zA-Z]/.test(cleaned)) {
+    return cleaned;
+  }
+  
   try {
-    // Try hex decoding
-    if (/^[0-9a-fA-F]+$/.test(memo)) {
-      const bytes = Buffer.from(memo, "hex");
-      // Remove null bytes and decode as UTF-8
+    // Try hex decoding only if it looks like hex (even length, all hex chars)
+    if (/^[0-9a-fA-F]+$/.test(cleaned) && cleaned.length % 2 === 0 && cleaned.length > 10) {
+      const bytes = Buffer.from(cleaned, "hex");
+      // Check if the result is valid UTF-8 text
       const text = bytes.toString("utf-8").replace(/\x00/g, "").trim();
-      return text;
+      // Only return decoded if it looks like readable text
+      if (/^[\x20-\x7E\s]+$/.test(text) && text.length > 0) {
+        return text;
+      }
     }
     
-    // Try base64 decoding
-    const bytes = Buffer.from(memo, "base64");
-    const text = bytes.toString("utf-8").replace(/\x00/g, "").trim();
-    return text;
+    // Try base64 decoding only if it looks like base64
+    if (/^[A-Za-z0-9+/=]+$/.test(cleaned) && cleaned.length > 10) {
+      const bytes = Buffer.from(cleaned, "base64");
+      const text = bytes.toString("utf-8").replace(/\x00/g, "").trim();
+      if (/^[\x20-\x7E\s]+$/.test(text) && text.length > 0) {
+        return text;
+      }
+    }
   } catch {
-    return memo; // Return as-is if decoding fails
+    // Decoding failed, return original
   }
+  
+  return cleaned;
 }
 
 /**
@@ -458,13 +539,27 @@ export async function getBalance(): Promise<{
 }> {
   try {
     const output = await runZingoCommand("balance");
-    const data = JSON.parse(output);
+    
+    // Parse the custom balance format (not standard JSON)
+    // Format: "confirmed_orchard_balance: 2_000_000"
+    const parseBalance = (key: string): number => {
+      const match = output.match(new RegExp(`${key}:\\s*([\\d_]+)`));
+      if (match) {
+        const value = parseInt(match[1].replace(/_/g, ""), 10);
+        return value / 100_000_000;
+      }
+      return 0;
+    };
+    
+    const orchard = parseBalance("total_orchard_balance");
+    const sapling = parseBalance("total_sapling_balance");
+    const transparent = parseBalance("total_transparent_balance");
     
     return {
-      total: (data.total || 0) / 100_000_000,
-      sapling: (data.sapling || 0) / 100_000_000,
-      orchard: (data.orchard || 0) / 100_000_000,
-      transparent: (data.transparent || 0) / 100_000_000,
+      total: orchard + sapling + transparent,
+      sapling,
+      orchard,
+      transparent,
     };
   } catch (error) {
     console.error("   ❌ Failed to get balance:", error);
@@ -484,8 +579,17 @@ export async function getAddresses(): Promise<{
     const output = await runZingoCommand("addresses");
     const data = JSON.parse(output);
     
+    // Handle array format from zingo-cli
+    if (Array.isArray(data) && data.length > 0) {
+      return {
+        unified: data[0].encoded_address,
+        sapling: data[0].has_sapling ? data[0].encoded_address : undefined,
+        transparent: data[0].has_transparent ? data[0].encoded_address : undefined,
+      };
+    }
+    
     return {
-      unified: data.unified_address,
+      unified: data.unified_address || data.encoded_address,
       sapling: data.sapling_address,
       transparent: data.transparent_address,
     };
