@@ -401,3 +401,4 @@ export async function createLightClient(config: ZcashConfig): Promise<ZcashLight
   return client;
 }
 
+

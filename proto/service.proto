@@ -167,3 +167,4 @@ service CompactTxStreamer {
     rpc Ping(Duration) returns (PingResponse) {}
 }
 
+

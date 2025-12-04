@@ -65,16 +65,16 @@ export async function generateImage(
   const prompt = `Create a colorful cartoon illustration featuring this character in this scene: ${sceneDescription}
 
 CHARACTER "ZEKE" (MATCH THE REFERENCE IMAGE EXACTLY):
-- Round dark SUNGLASSES
-- Slicked-back dark hair (1950s style)
-- Olive/greenish skin tone (monochromatic, muted)
-- Dark olive-green JACKET (open)
-- Dark t-shirt with cream/yellow "Z" logo
+- BLACK CENSORED BAR across eyes (scribbled/scratched out style - privacy symbol, NOT sunglasses)
+- Slicked-back dark olive hair (1950s pompadour style)
+- Olive-green skin tone (muted, monochromatic)
+- Dark olive-green JACKET (open/unbuttoned)
+- Dark olive t-shirt with yellow/cream "Z" logo on chest
 - Olive-green pants
 - Dark boots
-- Friendly smile, expressive poses
-- ENTIRE CHARACTER is monochromatic olive-green (like the reference)
-- Match the retro cartoon mascot style from the reference
+- Friendly smile showing teeth
+- ENTIRE CHARACTER is monochromatic olive-green tones
+- Retro Vault Boy / 1950s atomic age mascot style
 
 BACKGROUND & SCENE:
 - Background can be COLORFUL and VIBRANT
@@ -82,7 +82,7 @@ BACKGROUND & SCENE:
 - Be creative with lighting, atmosphere, and mood
 - Contrast Zeke's muted olive tones against colorful environments
 
-STYLE: Clean cartoon illustration, match the reference character exactly while scene is creative and colorful
+STYLE: Clean cartoon illustration, Vault Boy inspired, retro 1950s mascot aesthetic
 
 Text is OK when it fits the scene (warning signs, labels, symbols).`;
 

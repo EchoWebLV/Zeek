@@ -106,22 +106,22 @@ Include the date if possible.`,
       contents: `Based on this news:
 ${newsContext}
 
-Write a casual post like you're sharing cool news with a friend. TWO PARAGRAPHS (400-600 chars total):
-- First paragraph: What happened, in plain English
-- Second paragraph: Why this is actually exciting
+Write a punchy news update. TWO PARAGRAPHS only:
+- Paragraph 1: What happened (2-3 short sentences)
+- Paragraph 2: Why it matters (2-3 short sentences, end strong)
 
-RULES:
-- Write like a real person, not a news outlet
+Keep total length 250-400 chars MAX. Short sentences. Direct.
+
+STYLE:
+- Punchy and engaging, not dry
+- Simple words, short sentences
 - NO hashtags, NO emojis, NO em dashes (—)
-- Keep it conversational and genuine
-- Use "you" and "we" to make it personal
+- NO academic language ("utilizing", "significant", "infrastructure")
 
-Also describe an image scene for Zeke (retro 1950s mascot, olive jacket, black Z shirt, sunglasses).
-The scene should visually represent what the news is about.
-Focus on Zeke doing an action that relates to the news topic.
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic, yellow Z logo shirt).
 
 JSON format only:
-{"tweet": "First paragraph.\\n\\nSecond paragraph.", "imageScene": "Zeke [action related to news]"}`,
+{"tweet": "Paragraph 1.\\n\\nParagraph 2.\\n\\nParagraph 3.", "imageScene": "Zeke [action related to news]"}`,
       config: {
         responseMimeType: "application/json",
       },
@@ -138,10 +138,9 @@ JSON format only:
       .replace(/\s+/g, " ")
       .trim();
 
-    // For news posts, we'll keep the source URL separate (for the text file)
-    // but add a note that it's sourced news
+    // Add source URL to the tweet
     if (sourceUrl) {
-      cleanTweet += "\n\n📰 Source in replies";
+      cleanTweet += `\n\n📰 ${sourceUrl}`;
     }
 
     return {
@@ -172,15 +171,17 @@ export async function generatePrivacyTweet(): Promise<TweetData> {
 TOPIC: ${topic.theme}
 CONTEXT: ${topic.context}
 
-Share your thoughts on this topic. TWO PARAGRAPHS, casual and real.
-No hashtags, no emojis, no em dashes.
+Write a punchy take on this topic. TWO PARAGRAPHS only:
+- Paragraph 1: The problem or observation (2-3 short sentences)
+- Paragraph 2: The insight or solution (2-3 sentences, end with punch)
 
-Also describe an image scene for Zeke (retro 1950s mascot, olive jacket, black Z shirt, sunglasses).
-Show Zeke doing something that represents the concept visually.
-Examples: "Zeke building a wall around a glowing treasure", "Zeke sneaking past spotlights", "Zeke next to a warning sign"
+Keep total length 250-400 chars MAX. Short sentences. Direct.
+NO hashtags, NO emojis, NO em dashes (—). NO academic words.
+
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic, yellow Z logo shirt).
 
 JSON format:
-{"tweet": "First paragraph.\\n\\nSecond paragraph.", "imageScene": "Zeke [action]"}`;
+{"tweet": "Paragraph 1.\\n\\nParagraph 2.\\n\\nParagraph 3.", "imageScene": "Zeke [action]"}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -220,22 +221,22 @@ export async function generateAnalysisTweet(memoTopic: string): Promise<TweetDat
     throw new Error("Gemini not initialized. Call initGemini() first.");
   }
 
-  const prompt = `Someone paid with Zcash for your analysis on this topic:
+  const prompt = `Provide analysis on this topic requested via Zcash payment:
 
 TOPIC: "${memoTopic}"
 
-Give your honest take in TWO PARAGRAPHS (400-600 chars total):
-- First paragraph: What's the current situation
-- Second paragraph: Your take on what comes next
+Analyze it. TWO PARAGRAPHS:
+- Paragraph 1: The key insight (2-3 sentences)
+- Paragraph 2: What it means (2-3 sentences)
 
-Write like you're explaining to a smart friend. Direct and insightful.
-No hashtags, no emojis, no em dashes (—).
+Keep total length 250-400 chars MAX. Sharp and direct.
+NO hashtags, NO emojis, NO em dashes (—).
 
-Describe an image scene for Zeke (retro 1950s mascot, olive jacket, black Z shirt, sunglasses).
+Describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic, yellow Z logo shirt).
 Show Zeke investigating or analyzing something related to the topic.
 
 JSON format:
-{"tweet": "First paragraph.\\n\\nSecond paragraph.", "imageScene": "Zeke [investigating action]"}`;
+{"tweet": "Current state.\\n\\nInsights.\\n\\nOutlook.", "imageScene": "Zeke [investigating action]"}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -294,13 +295,16 @@ export async function generateTipTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Give a practical crypto privacy tip about: ${topic}
 
-Context: You're part of the ZK/Zcash privacy community. Give actionable advice.
-Write ONE helpful tip in 2-3 sentences. Be specific and technical but accessible.
-Write casually like you're helping a fellow cypherpunk. No hashtags, no emojis, no em dashes.
+Write a quick, useful tip. TWO PARAGRAPHS:
+- Paragraph 1: The tip (1-2 direct sentences)
+- Paragraph 2: Why it works (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) demonstrating the tip.
+Keep total length 150-300 chars MAX. Be direct.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your tip here", "imageScene": "Zeke [demonstrating tip]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) demonstrating the tip.
+
+JSON: {"tweet": "Paragraph 1.\\n\\nParagraph 2.", "imageScene": "Zeke [demonstrating tip]"}`,
     config: { responseMimeType: "application/json" },
   });
 
@@ -337,14 +341,16 @@ export async function generateQuestionTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Ask a thought-provoking question about: ${theme}
 
-Context: You're speaking to the ZK/Zcash/privacy crypto community.
-The question should spark genuine discussion among builders and users.
-Could be about technical tradeoffs, adoption challenges, or philosophical aspects.
-Keep it to 1-2 sentences. No hashtags, no emojis, no em dashes.
+Ask a thought-provoking question. TWO PARAGRAPHS:
+- Paragraph 1: Quick context (1 sentence)
+- Paragraph 2: The question (make people think)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) looking curious or thinking.
+Keep total length 100-200 chars MAX. Short and punchy.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your question here?", "imageScene": "Zeke [thinking/curious pose]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) looking curious or thinking.
+
+JSON: {"tweet": "Context.\\n\\nThe question?", "imageScene": "Zeke [thinking/curious pose]"}`,
     config: { responseMimeType: "application/json" },
   });
 
@@ -380,13 +386,16 @@ export async function generateQuoteTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Search for a real quote: ${source}
 
-Must be a REAL quote with correct attribution from someone in crypto/privacy/cypherpunk space.
-Share the quote and add 1-2 sentences connecting it to current ZK/privacy developments.
-No hashtags, no emojis, no em dashes.
+Must be a REAL quote. TWO PARAGRAPHS:
+- Paragraph 1: The quote with attribution
+- Paragraph 2: One punchy sentence on why it matters now
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) inspired by the quote.
+Keep total length 200-350 chars MAX.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "\\"The quote here\\" - Author Name\\n\\nYour brief commentary.", "imageScene": "Zeke [action related to quote]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) inspired by the quote.
+
+JSON: {"tweet": "\\"The quote here.\\" - Author Name\\n\\nWhy this matters today.", "imageScene": "Zeke [action related to quote]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -427,16 +436,18 @@ export async function generatePredictionTweet(): Promise<TweetData> {
 
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: `Search for current trends about ${topic}, then make a bold prediction for ${timeframe}.
+    contents: `Search for current trends about ${topic}, then make a prediction for ${timeframe}.
 
-Context: You're deeply embedded in the ZK/Zcash/privacy crypto space.
-Based on real current developments, what do you think will happen?
-Write 2-3 sentences. Sound confident but not arrogant. Be specific.
-No hashtags, no emojis, no em dashes.
+Make a bold prediction. TWO PARAGRAPHS:
+- Paragraph 1: The prediction (direct, confident)
+- Paragraph 2: Why you believe this (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) looking into the future.
+Keep total length 200-350 chars MAX. Be confident.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your prediction here", "imageScene": "Zeke [futuristic/visionary pose]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) looking into the future.
+
+JSON: {"tweet": "Current state.\\n\\nPrediction.\\n\\nReasoning.", "imageScene": "Zeke [futuristic/visionary pose]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -476,14 +487,16 @@ export async function generateFactTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Search for a real, current statistic about: ${topic}
 
-Context: You're sharing data relevant to the ZK/privacy crypto community.
-Share ONE interesting fact with numbers and context. Keep it to 2-3 sentences.
-Make it surprising or relevant to privacy advocates.
-No hashtags, no emojis, no em dashes.
+Share a surprising fact. TWO PARAGRAPHS:
+- Paragraph 1: The fact/stat (short and punchy)
+- Paragraph 2: What it means (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) reacting to the fact.
+Keep total length 150-300 chars MAX.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your fact here", "imageScene": "Zeke [reaction to surprising info]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) reacting to the fact.
+
+JSON: {"tweet": "The fact.\\n\\nThe implication.", "imageScene": "Zeke [reaction to surprising info]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -523,14 +536,16 @@ export async function generateCelebrationTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Search for recent positive news about: ${topic}
 
-Context: You're part of the ZK/Zcash privacy community celebrating ecosystem wins.
-Find a real recent achievement: network upgrade, adoption milestone, new feature, or community win.
-Celebrate it genuinely in 2-3 sentences. Be excited but authentic.
-No hashtags, no emojis, no em dashes.
+Celebrate a win. TWO PARAGRAPHS:
+- Paragraph 1: What happened (1-2 sentences)
+- Paragraph 2: Why it matters (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) celebrating.
+Keep total length 150-300 chars MAX. Positive energy.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your celebration here", "imageScene": "Zeke [celebrating/excited pose]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) celebrating.
+
+JSON: {"tweet": "The achievement.\\n\\nThe significance.", "imageScene": "Zeke [celebrating/excited pose]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -568,16 +583,18 @@ export async function generateHotTakeTweet(): Promise<TweetData> {
 
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: `Share a bold opinion about: ${topic}
+    contents: `Share a strong opinion about: ${topic}
 
-Context: You're a privacy maximalist in the ZK/Zcash community.
-Something that might spark debate among crypto builders. Not offensive, just opinionated.
-Write 2-3 sentences. Be confident and direct. Take a clear stance.
-No hashtags, no emojis, no em dashes.
+State your opinion boldly. TWO PARAGRAPHS:
+- Paragraph 1: The take (direct, no hedging)
+- Paragraph 2: Why (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) looking bold/confident.
+Keep total length 150-300 chars MAX. Be bold.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your hot take here", "imageScene": "Zeke [confident/bold pose]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) looking bold/confident.
+
+JSON: {"tweet": "The position.\\n\\nThe reasoning.", "imageScene": "Zeke [confident/bold pose]"}`,
     config: { responseMimeType: "application/json" },
   });
 
@@ -614,14 +631,16 @@ export async function generateRecommendationTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Search for and recommend: ${category}
 
-Context: You're recommending tools to the ZK/Zcash privacy community.
-Briefly explain what it is and why it's good. Keep it to 2-3 sentences.
-Be genuine, like recommending something to a fellow builder. Mention actual names.
-No hashtags, no emojis, no em dashes.
+Recommend it. TWO PARAGRAPHS:
+- Paragraph 1: What it is (1-2 sentences)
+- Paragraph 2: Why use it (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) using or recommending the tool.
+Keep total length 150-300 chars MAX. Be specific.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your recommendation here", "imageScene": "Zeke [using/showing tool]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) using or recommending the tool.
+
+JSON: {"tweet": "What it is.\\n\\nWhy it's useful.", "imageScene": "Zeke [using/showing tool]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -662,15 +681,16 @@ export async function generateShoutoutTweet(): Promise<TweetData> {
     model: "gemini-3-pro-preview",
     contents: `Search for: ${target}
 
-Context: You're giving a shoutout to builders in the ZK/Zcash privacy ecosystem.
-Find a specific person, team, or project doing good work. Give them genuine recognition.
-Explain briefly what they're doing and why it matters. Keep it to 2-3 sentences.
-Be appreciative and specific. Mention actual names.
-No hashtags, no emojis, no em dashes.
+Give a shoutout. TWO PARAGRAPHS:
+- Paragraph 1: Who they are (1-2 sentences)
+- Paragraph 2: Why they matter (1-2 sentences)
 
-Also describe an image scene for Zeke (retro mascot, olive-green tones) giving props/applauding.
+Keep total length 150-300 chars MAX. Be genuine.
+NO hashtags, NO emojis, NO em dashes (—).
 
-JSON: {"tweet": "Your shoutout here", "imageScene": "Zeke [applauding/showing respect]"}`,
+Also describe an image scene for Zeke (retro Vault Boy mascot with black censored bar over eyes, olive-green monochromatic) giving props/applauding.
+
+JSON: {"tweet": "Who and what.\\n\\nWhy it matters.", "imageScene": "Zeke [applauding/showing respect]"}`,
     config: { 
       responseMimeType: "application/json",
       tools: [{ googleSearch: {} }],
@@ -701,7 +721,7 @@ function cleanText(text: string): string {
 /**
  * Zeke character description for consistent image generation
  */
-const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke": round dark sunglasses, slicked-back dark hair, monochromatic olive-green skin and clothes (entire character is olive-toned), dark jacket (open), dark t-shirt with cream "Z" logo, olive pants, dark boots. Expressive and friendly`;
+const ZEKE_CHARACTER = `Retro cartoon mascot "Zeke": BLACK CENSORED BAR across eyes (scribbled privacy symbol), slicked-back dark olive hair, monochromatic olive-green skin and clothes, dark olive jacket (open), olive t-shirt with yellow "Z" logo, olive pants, dark boots, friendly smile. Vault Boy style`;
 
 /**
  * Enhance an image prompt for better Imagen results

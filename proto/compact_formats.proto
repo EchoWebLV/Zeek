@@ -54,3 +54,4 @@ message CompactOrchardAction {
     bytes ciphertext = 4;
 }
 
+
