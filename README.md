@@ -1,8 +1,8 @@
-# 🔐 ZEKE - Privacy Bot & Shielded Blog Service
+# 🔐 ZEKE - Privacy Bot & Shielded Paid Posts
 
 A privacy-focused platform with two components:
 1. **Twitter Bot**: AI-powered privacy advocacy posts using Gemini 3.0
-2. **Shielded Blog Service**: Pay with shielded ZEC to generate long-form privacy articles
+2. **Shielded Paid Posts**: Pay with shielded ZEC to trigger on-demand analysis posts
 
 Built for the [Zypherpunk Hackathon](https://zypherpunk.com) - "Build the Machinery of Freedom"
 
@@ -12,12 +12,13 @@ Built for the [Zypherpunk Hackathon](https://zypherpunk.com) - "Build the Machin
 - **AI-Powered Text Generation**: Uses Gemini 3.0 to create engaging tweets about privacy technology
 - **AI-Generated Images**: Uses Google's Imagen to create visuals with the Zeke mascot
 - **ZK News Posts**: Automated news about zero-knowledge technology using Google Search
+- **10+ Post Types**: Tips, facts, predictions, hot takes, quotes, shoutouts, recommendations, and more
 
-### Shielded Blog Service (NEW!)
+### Shielded Paid Posts
 - **Pay with Shielded ZEC**: Send a shielded transaction with your topic in the memo
+- **On-Demand Analysis**: Your memo topic triggers a public analysis post
 - **Pure Node.js Light Client**: Connects to lightwalletd via gRPC - no Rust required
-- **AI Blog Generation**: Generates 1500-2500 word articles using Gemini 3.0
-- **Privacy-First**: Your payment and topic request remain private
+- **Privacy-First**: Your payment and identity remain shielded, only the insight goes public
 
 ## 📋 Prerequisites
 
@@ -50,7 +51,7 @@ X_ACCESS_TOKEN=your_x_access_token
 X_ACCESS_SECRET=your_x_access_secret
 MODE=local
 
-# Shielded Blog Service (for --live mode)
+# Shielded Paid Posts (for --live mode)
 ZCASH_VIEWING_KEY=your_32_byte_hex_ivk
 LIGHTWALLETD_URL=mainnet.lightwalletd.com:9067
 ZCASH_NETWORK=mainnet
@@ -70,7 +71,7 @@ npm run dev
 npm start
 ```
 
-### Shielded Blog Service
+### Shielded Paid Posts
 
 ```bash
 # Interactive mode - type topics manually
@@ -92,7 +93,7 @@ npm run blog:live
 2. **Add to .env**: `ZCASH_VIEWING_KEY=your_ivk_hex`
 3. **Run**: `npm run blog:live`
 4. **Send shielded ZEC** with your topic in the memo field
-5. **Blog post generated** automatically in `testBlog/`
+5. **Analysis post generated** automatically
 
 ```bash
 # Start from a specific block height
@@ -105,7 +106,7 @@ npm run blog:live -- --start=2500000
 zeke/
 ├── src/
 │   ├── index.ts              # Twitter bot entry point
-│   ├── blog.ts               # Shielded blog service entry point
+│   ├── blog.ts               # Shielded paid posts entry point
 │   ├── types.ts              # TypeScript types
 │   ├── config/
 │   │   └── topics.ts         # Privacy topics & prompts
@@ -117,35 +118,35 @@ zeke/
 │       ├── twitter.ts        # X/Twitter posting
 │       ├── zcash.ts          # Zcash wallet (demo mode)
 │       ├── lightclient.ts    # Zcash light client (live mode)
-│       └── blog.ts           # Blog post generation
+│       └── blog.ts           # Post generation
 ├── proto/                    # Lightwalletd gRPC protos
 ├── test/                     # Twitter bot test output
-├── testBlog/                 # Blog service output
+├── testBlog/                 # Generated posts output
 └── package.json
 ```
 
-## 🔒 How Shielded Blog Works
+## 🔒 How Shielded Paid Posts Work
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    SHIELDED BLOG FLOW                        │
+│                  SHIELDED PAID POSTS FLOW                   │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. User sends shielded ZEC with topic in memo               │
-│     └── Transaction is private, topic is private             │
-│                                                              │
-│  2. ZEKE light client syncs via lightwalletd                 │
-│     └── Pure Node.js - gRPC + Jubjub crypto                  │
-│                                                              │
-│  3. Trial decrypts outputs using your viewing key            │
-│     └── Only you can see transactions sent to you            │
-│                                                              │
-│  4. Extracts memo (blog topic) from decrypted note           │
-│                                                              │
-│  5. Generates 1500-2500 word article with Gemini             │
-│                                                              │
-│  6. Saves to testBlog/ as .md and .txt                       │
-│                                                              │
+│                                                             │
+│  1. User sends shielded ZEC with topic in memo              │
+│     └── Payment is private, identity is shielded            │
+│                                                             │
+│  2. ZEKE light client syncs via lightwalletd                │
+│     └── Pure Node.js - gRPC + Jubjub crypto                 │
+│                                                             │
+│  3. Trial decrypts outputs using viewing key                │
+│     └── Only ZEKE can see transactions sent to it           │
+│                                                             │
+│  4. Extracts memo (topic request) from decrypted note       │
+│                                                             │
+│  5. Generates analysis post with Gemini AI                  │
+│                                                             │
+│  6. Publishes public insight - pay privately, get public    │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -173,6 +174,10 @@ The light client is implemented entirely in TypeScript/Node.js:
 - **Blake2b**: Key derivation using `@noble/hashes`
 
 No Rust, no WASM, no CLI tools required!
+
+### Shielded Memo Analytics
+
+Under the hood, ZEKE decodes shielded memos using viewing keys and transforms them into AI-generated content—analysis posts and insights—without ever compromising transaction privacy. It turns the memo field into a privacy-preserving signal layer, surfacing what the community cares about while keeping individual identities shielded.
 
 ### Lightwalletd Servers
 
