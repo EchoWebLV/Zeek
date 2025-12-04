@@ -333,54 +333,82 @@ const ZCASH_POLL_INTERVAL = parseInt(process.env.ZCASH_POLL_INTERVAL || "60", 10
 
 /**
  * Start Zcash payment monitoring (if configured)
+ * 
+ * This enables the "pay with ZEC for analysis" feature.
+ * When a payment with a memo is received, an analysis tweet is generated and posted.
  */
 async function startZcashMonitoring(): Promise<void> {
   const seedPhrase = process.env.ZCASH_SEED_PHRASE;
+  const walletBirthday = process.env.ZCASH_WALLET_BIRTHDAY 
+    ? parseInt(process.env.ZCASH_WALLET_BIRTHDAY, 10) 
+    : undefined;
   
   if (!seedPhrase) {
     console.log("💤 Zcash monitoring disabled (no ZCASH_SEED_PHRASE set)");
+    console.log("   To enable: set ZCASH_SEED_PHRASE environment variable");
     return;
   }
 
   try {
     // Dynamic import to avoid issues if zingo isn't available
-    const { isZingoInstalled, initZingo, initWalletFromSeed, watchForTransactions } = 
+    const { isZingoInstalled, getZingoVersion, initZingo, initWalletFromSeed, watchForTransactions, getAddresses } = 
       await import("./services/zingo.js");
 
     if (!isZingoInstalled()) {
       console.log("⚠️  Zingo CLI not installed - Zcash monitoring disabled");
+      console.log("   Install zingo-cli from: https://github.com/zingolabs/zingo-cli");
       return;
     }
 
     console.log("\n🔗 Starting Zcash payment monitoring...");
+    console.log(`   Zingo version: ${getZingoVersion()}`);
     
     // Initialize Zingo
+    const network = (process.env.ZCASH_NETWORK as "mainnet" | "testnet") || "mainnet";
+    const lightwalletdUrl = process.env.LIGHTWALLETD_URL || "https://mainnet.lightwalletd.com:9067";
+    
     initZingo({
-      network: (process.env.ZCASH_NETWORK as "mainnet" | "testnet") || "mainnet",
-      lightwalletdUrl: process.env.LIGHTWALLETD_URL || "https://mainnet.lightwalletd.com:9067",
+      network,
+      lightwalletdUrl,
       pollInterval: ZCASH_POLL_INTERVAL,
     });
 
-    // Initialize wallet
-    await initWalletFromSeed(seedPhrase);
-    console.log("   ✅ Zcash wallet initialized");
+    // Initialize wallet from seed phrase
+    const walletInitialized = await initWalletFromSeed(seedPhrase, walletBirthday);
+    
+    if (!walletInitialized) {
+      console.error("❌ Failed to initialize Zcash wallet - monitoring disabled");
+      return;
+    }
+
+    // Display wallet addresses for receiving payments
+    const addresses = await getAddresses();
+    if (addresses.unified) {
+      console.log("\n📬 Send ZEC with memo to request analysis:");
+      console.log(`   ${addresses.unified}`);
+    }
 
     // Start watching for transactions
+    console.log(`\n💤 Polling for payments every ${ZCASH_POLL_INTERVAL / 1000}s...`);
+    
     watchForTransactions(async (tx) => {
       console.log(`\n💰 Payment received! Amount: ${tx.amountZec} ZEC`);
       console.log(`   Memo: "${tx.memo}"`);
 
-      if (tx.memo && tx.memo.length > 0) {
+      if (tx.memo && tx.memo.trim().length > 0) {
         try {
-          await postAnalysis(tx.memo);
+          await postAnalysis(tx.memo.trim());
         } catch (error) {
           console.error("   ❌ Failed to post analysis:", error);
         }
+      } else {
+        console.log("   ⚠️  No memo found - skipping (send ZEC with a memo to request analysis)");
       }
     }, ZCASH_POLL_INTERVAL);
 
   } catch (error) {
     console.error("❌ Failed to start Zcash monitoring:", error);
+    console.error("   Zcash payment feature will be unavailable");
   }
 }
 
