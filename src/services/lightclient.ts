@@ -14,9 +14,11 @@ import {
   tryDecryptNote, 
   decryptFullNote,
   parseIncomingViewingKey,
+  parseSaplingOutputsFromTx,
   type SaplingOutput,
   type DecryptedNote,
-  type IncomingViewingKey 
+  type IncomingViewingKey,
+  type FullSaplingOutput
 } from "../crypto/sapling.js";
 import type { ShieldedTransaction, ZcashConfig } from "../types.js";
 
@@ -224,6 +226,7 @@ export class ZcashLightClient {
 
   /**
    * Scan blocks for incoming transactions
+   * Now fetches full transactions to extract memos!
    */
   async scanBlocks(startHeight: number, endHeight: number): Promise<ShieldedTransaction[]> {
     if (!this.client || !this.ivk) {
@@ -231,11 +234,17 @@ export class ZcashLightClient {
       return [];
     }
 
-    const transactions: ShieldedTransaction[] = [];
+    // First pass: detect transactions using compact blocks
+    const detectedTxs: Array<{
+      txid: string;
+      blockHeight: number;
+      timestamp: Date;
+      compactValue: bigint;
+    }> = [];
     
     console.log(`   📦 Scanning blocks ${startHeight} to ${endHeight}...`);
 
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const stream = this.client!.getBlockRange({
         start: { height: startHeight, hash: Buffer.alloc(0) },
         end: { height: endHeight, hash: Buffer.alloc(0) },
@@ -262,19 +271,16 @@ export class ZcashLightClient {
             const decrypted = tryDecryptNote(saplingOutput, this.ivk!);
             
             if (decrypted) {
+              const txid = Buffer.from(tx.hash).reverse().toString("hex");
               console.log(`\n   🎉 Found transaction at height ${block.height}!`);
+              console.log(`   TxID: ${txid.substring(0, 16)}...`);
               console.log(`   Value: ${Number(decrypted.value) / 100_000_000} ZEC`);
               
-              // Note: For compact blocks, we can't get the full memo
-              // We'd need to fetch the full transaction
-              transactions.push({
-                txid: Buffer.from(tx.hash).reverse().toString("hex"),
+              detectedTxs.push({
+                txid,
                 blockHeight: block.height,
                 timestamp: new Date(block.time * 1000),
-                amountZatoshis: decrypted.value,
-                amountZec: Number(decrypted.value) / 100_000_000,
-                memo: decrypted.memoText,
-                processed: false,
+                compactValue: decrypted.value,
               });
             }
           }
@@ -288,11 +294,80 @@ export class ZcashLightClient {
 
       stream.on("end", () => {
         console.log(`   ✅ Scanned ${blocksScanned} blocks, ${outputsScanned} outputs`);
-        console.log(`   Found ${transactions.length} transactions for this viewing key`);
+        console.log(`   Detected ${detectedTxs.length} potential transactions`);
         this.lastScannedHeight = endHeight;
-        resolve(transactions);
+        resolve();
       });
     });
+
+    // Second pass: fetch full transactions to get memos
+    const transactions: ShieldedTransaction[] = [];
+    
+    for (const detected of detectedTxs) {
+      console.log(`   📥 Fetching full transaction ${detected.txid.substring(0, 16)}...`);
+      
+      const fullTx = await this.getFullTransaction(detected.txid);
+      
+      if (fullTx && fullTx.data) {
+        // Parse Sapling outputs from full transaction
+        const saplingOutputs = parseSaplingOutputsFromTx(Buffer.from(fullTx.data));
+        
+        if (saplingOutputs.length > 0) {
+          console.log(`   📦 Found ${saplingOutputs.length} Sapling outputs in transaction`);
+          
+          // Try to decrypt each output to find the one for us
+          for (const output of saplingOutputs) {
+            const decrypted = decryptFullNote(
+              output.encCiphertext,
+              output.ephemeralKey,
+              this.ivk!
+            );
+            
+            if (decrypted) {
+              console.log(`   ✅ Decrypted memo: "${decrypted.memoText.substring(0, 50)}${decrypted.memoText.length > 50 ? '...' : ''}"`);
+              
+              transactions.push({
+                txid: detected.txid,
+                blockHeight: detected.blockHeight,
+                timestamp: detected.timestamp,
+                amountZatoshis: decrypted.value,
+                amountZec: Number(decrypted.value) / 100_000_000,
+                memo: decrypted.memoText,
+                processed: false,
+              });
+              break; // Found our output, no need to check others
+            }
+          }
+        } else {
+          console.log(`   ⚠️  No Sapling outputs found in full transaction`);
+          // Fallback: use compact block data without memo
+          transactions.push({
+            txid: detected.txid,
+            blockHeight: detected.blockHeight,
+            timestamp: detected.timestamp,
+            amountZatoshis: detected.compactValue,
+            amountZec: Number(detected.compactValue) / 100_000_000,
+            memo: "[Could not parse Sapling outputs from transaction]",
+            processed: false,
+          });
+        }
+      } else {
+        console.log(`   ⚠️  Could not fetch full transaction`);
+        // Fallback: use compact block data without memo
+        transactions.push({
+          txid: detected.txid,
+          blockHeight: detected.blockHeight,
+          timestamp: detected.timestamp,
+          amountZatoshis: detected.compactValue,
+          amountZec: Number(detected.compactValue) / 100_000_000,
+          memo: "[Could not fetch full transaction for memo]",
+          processed: false,
+        });
+      }
+    }
+    
+    console.log(`   📬 Successfully processed ${transactions.length} transactions with memos`);
+    return transactions;
   }
 
   /**

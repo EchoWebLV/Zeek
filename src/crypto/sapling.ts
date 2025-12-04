@@ -556,3 +556,240 @@ export function decryptFullNote(
   }
 }
 
+// ============================================================
+// RAW TRANSACTION PARSING
+// ============================================================
+
+/** Sapling output from a full transaction */
+export interface FullSaplingOutput {
+  cv: Buffer;           // 32 bytes - value commitment
+  cmu: Buffer;          // 32 bytes - note commitment  
+  ephemeralKey: Buffer; // 32 bytes
+  encCiphertext: Buffer; // 580 bytes - contains the memo!
+  outCiphertext: Buffer; // 80 bytes
+}
+
+/**
+ * Read a CompactSize (variable-length integer) from buffer
+ * Returns [value, bytesRead]
+ */
+function readCompactSize(buffer: Buffer, offset: number): [number, number] {
+  const first = buffer[offset];
+  if (first < 253) {
+    return [first, 1];
+  } else if (first === 253) {
+    return [buffer.readUInt16LE(offset + 1), 3];
+  } else if (first === 254) {
+    return [buffer.readUInt32LE(offset + 1), 5];
+  } else {
+    // 255 - 8 byte, but we don't expect counts this large
+    const low = buffer.readUInt32LE(offset + 1);
+    const high = buffer.readUInt32LE(offset + 5);
+    return [low + high * 0x100000000, 9];
+  }
+}
+
+/**
+ * Parse a raw Zcash transaction and extract Sapling outputs
+ * Supports both v4 (Sapling) and v5 (NU5) transaction formats
+ */
+export function parseSaplingOutputsFromTx(rawTx: Buffer): FullSaplingOutput[] {
+  const outputs: FullSaplingOutput[] = [];
+  let offset = 0;
+  
+  try {
+    // Read header (4 bytes)
+    const header = rawTx.readUInt32LE(offset);
+    offset += 4;
+    
+    const overwintered = (header & 0x80000000) !== 0;
+    const version = header & 0x7FFFFFFF;
+    
+    if (!overwintered) {
+      // Pre-Overwinter transactions don't have Sapling
+      return [];
+    }
+    
+    // Version group ID (4 bytes)
+    const versionGroupId = rawTx.readUInt32LE(offset);
+    offset += 4;
+    
+    // Handle v5 transactions (NU5+)
+    if (version === 5) {
+      return parseSaplingOutputsV5(rawTx, offset);
+    }
+    
+    // v4 transaction parsing
+    // Consensus branch ID (for v4 with nVersionGroupId = 0x892F2085)
+    
+    // Transparent inputs
+    const [txInCount, txInSize] = readCompactSize(rawTx, offset);
+    offset += txInSize;
+    
+    // Skip transparent inputs
+    for (let i = 0; i < txInCount; i++) {
+      offset += 36; // prevout (32 + 4)
+      const [scriptLen, scriptLenSize] = readCompactSize(rawTx, offset);
+      offset += scriptLenSize + scriptLen;
+      offset += 4; // sequence
+    }
+    
+    // Transparent outputs
+    const [txOutCount, txOutSize] = readCompactSize(rawTx, offset);
+    offset += txOutSize;
+    
+    // Skip transparent outputs
+    for (let i = 0; i < txOutCount; i++) {
+      offset += 8; // value
+      const [scriptLen, scriptLenSize] = readCompactSize(rawTx, offset);
+      offset += scriptLenSize + scriptLen;
+    }
+    
+    // Lock time (4 bytes)
+    offset += 4;
+    
+    // Expiry height (4 bytes)
+    offset += 4;
+    
+    // Value balance (8 bytes) - for Sapling
+    offset += 8;
+    
+    // Sapling Spends
+    const [spendCount, spendSize] = readCompactSize(rawTx, offset);
+    offset += spendSize;
+    
+    // Skip Sapling spends (each is 384 bytes)
+    offset += spendCount * 384;
+    
+    // Sapling Outputs
+    const [outputCount, outputSize] = readCompactSize(rawTx, offset);
+    offset += outputSize;
+    
+    // Parse each Sapling output
+    for (let i = 0; i < outputCount; i++) {
+      const cv = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const cmu = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const ephemeralKey = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const encCiphertext = rawTx.subarray(offset, offset + 580);
+      offset += 580;
+      
+      const outCiphertext = rawTx.subarray(offset, offset + 80);
+      offset += 80;
+      
+      outputs.push({
+        cv: Buffer.from(cv),
+        cmu: Buffer.from(cmu),
+        ephemeralKey: Buffer.from(ephemeralKey),
+        encCiphertext: Buffer.from(encCiphertext),
+        outCiphertext: Buffer.from(outCiphertext),
+      });
+    }
+    
+  } catch (error) {
+    console.error("Error parsing transaction:", error);
+  }
+  
+  return outputs;
+}
+
+/**
+ * Parse Sapling outputs from a v5 transaction
+ */
+function parseSaplingOutputsV5(rawTx: Buffer, offset: number): FullSaplingOutput[] {
+  const outputs: FullSaplingOutput[] = [];
+  
+  try {
+    // Consensus branch ID (4 bytes)
+    offset += 4;
+    
+    // Lock time (4 bytes)
+    offset += 4;
+    
+    // Expiry height (4 bytes)
+    offset += 4;
+    
+    // Transparent bundle
+    const [txInCount, txInSize] = readCompactSize(rawTx, offset);
+    offset += txInSize;
+    
+    const [txOutCount, txOutSize] = readCompactSize(rawTx, offset);
+    offset += txOutSize;
+    
+    // Skip transparent inputs
+    for (let i = 0; i < txInCount; i++) {
+      offset += 36; // prevout
+      const [scriptLen, scriptLenSize] = readCompactSize(rawTx, offset);
+      offset += scriptLenSize + scriptLen;
+      offset += 4; // sequence
+    }
+    
+    // Skip transparent outputs
+    for (let i = 0; i < txOutCount; i++) {
+      offset += 8; // value
+      const [scriptLen, scriptLenSize] = readCompactSize(rawTx, offset);
+      offset += scriptLenSize + scriptLen;
+    }
+    
+    // Sapling bundle
+    const [spendCount, spendSize] = readCompactSize(rawTx, offset);
+    offset += spendSize;
+    
+    const [outputCount, outputSize] = readCompactSize(rawTx, offset);
+    offset += outputSize;
+    
+    if (spendCount + outputCount === 0) {
+      // No Sapling bundle, skip to Orchard
+      return outputs;
+    }
+    
+    // Value balance (8 bytes)
+    offset += 8;
+    
+    // Anchor (32 bytes) if spends > 0
+    if (spendCount > 0) {
+      offset += 32;
+    }
+    
+    // Spend descriptions (without proofs/sigs in v5)
+    // Each spend: cv(32) + nullifier(32) + rk(32) = 96 bytes
+    offset += spendCount * 96;
+    
+    // Output descriptions
+    for (let i = 0; i < outputCount; i++) {
+      const cv = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const cmu = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const ephemeralKey = rawTx.subarray(offset, offset + 32);
+      offset += 32;
+      
+      const encCiphertext = rawTx.subarray(offset, offset + 580);
+      offset += 580;
+      
+      const outCiphertext = rawTx.subarray(offset, offset + 80);
+      offset += 80;
+      
+      outputs.push({
+        cv: Buffer.from(cv),
+        cmu: Buffer.from(cmu),
+        ephemeralKey: Buffer.from(ephemeralKey),
+        encCiphertext: Buffer.from(encCiphertext),
+        outCiphertext: Buffer.from(outCiphertext),
+      });
+    }
+    
+  } catch (error) {
+    console.error("Error parsing v5 transaction:", error);
+  }
+  
+  return outputs;
+}
+
