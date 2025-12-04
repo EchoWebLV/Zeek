@@ -17,6 +17,7 @@ import {
   generateHotTakeTweet,
   generateRecommendationTweet,
   generateShoutoutTweet,
+  checkTopicRelevance,
 } from "./services/gemini.js";
 import { initImagen, generateImage } from "./services/imagen.js";
 import { initTwitter, postTweetWithImage, verifyCredentials } from "./services/twitter.js";
@@ -163,6 +164,14 @@ async function generateTweetByType(postType: PostType | "news"): Promise<TweetDa
 
 /**
  * Post an Analysis tweet based on a Zcash memo
+ * 
+ * The tweet format includes:
+ * - Attribution to ZK paid memo request
+ * - The original question/topic
+ * - Zeke's analysis response
+ * 
+ * Topics are filtered for relevance to ZK, privacy, Zcash, etc.
+ * Irrelevant topics are rejected with a reason.
  */
 export async function postAnalysis(memoTopic: string): Promise<GenerationResult> {
   console.log("\n" + "=".repeat(60));
@@ -172,20 +181,48 @@ export async function postAnalysis(memoTopic: string): Promise<GenerationResult>
   console.log("");
 
   try {
-    // Generate analysis
-    console.log("📝 Generating analysis with Gemini...");
+    // Step 1: Check if topic is relevant to ZK/privacy/crypto
+    console.log("🔎 Checking topic relevance...");
+    const relevance = await checkTopicRelevance(memoTopic);
+    
+    if (!relevance.isRelevant) {
+      console.log(`   ❌ Topic rejected: ${relevance.reason}`);
+      console.log(`   Confidence: ${(relevance.confidence * 100).toFixed(0)}%`);
+      console.log("\n" + "=".repeat(60));
+      console.log("⏭️  SKIPPED - Topic not relevant to ZK/privacy/crypto");
+      console.log("=".repeat(60));
+      
+      return {
+        success: false,
+        tweet: "",
+        topic: memoTopic,
+        imagePath: null,
+      };
+    }
+    
+    console.log(`   ✅ Topic approved: ${relevance.reason}`);
+    console.log(`   Confidence: ${(relevance.confidence * 100).toFixed(0)}%`);
+    if (relevance.suggestedCategory) {
+      console.log(`   Category: ${relevance.suggestedCategory}`);
+    }
+
+    // Step 2: Generate analysis
+    console.log("\n📝 Generating analysis with Gemini...");
     const tweetData = await generateAnalysisTweet(memoTopic);
     console.log("   ✅ Analysis generated!");
 
-    const tweetText = getTweetPrefix(tweetData) + tweetData.text;
+    // Format tweet with paid memo attribution
+    // Format: "🔍 A ZK paid memo asks: [question]\n\n[Zeke's analysis]"
+    const tweetText = `🔍 A ZK paid memo asks: ${memoTopic}\n\n${tweetData.text}`;
     console.log(`   Tweet: "${tweetText.substring(0, 100)}..."`);
+    console.log(`   Length: ${tweetText.length} chars`);
 
-    // Generate image
+    // Step 3: Generate image
     const imageScene = tweetData.imagePrompt;
     console.log("\n🎨 Scene:", imageScene);
     const imageBuffer = await generateImage(imageScene);
 
-    // Post to X
+    // Step 4: Post to X
     console.log("\n🚀 Posting Analysis to X...");
     const result = await postTweetWithImage(tweetText, imageBuffer);
 

@@ -12,6 +12,11 @@ testBlog/
 .post_counter
 .rotation_state.json
 
+# Zcash wallet data (SENSITIVE - contains seed phrase!)
+wallets/
+.zingo/
+*.dat
+
 # OS files
 .DS_Store
 Thumbs.db

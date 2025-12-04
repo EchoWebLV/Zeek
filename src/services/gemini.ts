@@ -12,6 +12,123 @@ export function initGemini(apiKey: string): void {
 }
 
 /**
+ * Relevance check result
+ */
+export interface RelevanceCheckResult {
+  isRelevant: boolean;
+  confidence: number;
+  reason: string;
+  suggestedCategory?: string;
+}
+
+/**
+ * Check if a memo topic is relevant to ZK, privacy, Zcash, and related topics
+ * 
+ * This filters out spam, off-topic requests, and irrelevant questions
+ * to ensure the bot only responds to appropriate queries.
+ */
+export async function checkTopicRelevance(memoTopic: string): Promise<RelevanceCheckResult> {
+  if (!ai) {
+    throw new Error("Gemini not initialized. Call initGemini() first.");
+  }
+
+  // Quick keyword pre-filter for obvious matches
+  const relevantKeywords = [
+    'zcash', 'zec', 'privacy', 'zero knowledge', 'zk', 'zkp', 'zksnark', 'zkstark',
+    'shielded', 'encrypted', 'anonymous', 'monero', 'xmr', 'cryptocurrency', 'crypto',
+    'blockchain', 'defi', 'decentralized', 'self-custody', 'wallet', 'seed phrase',
+    'private transaction', 'surveillance', 'financial privacy', 'sapling', 'orchard',
+    'lightwalletd', 'memo', 'viewing key', 'spending key', 'transparent', 'confidential',
+    'fhe', 'homomorphic', 'mpc', 'secure computation', 'aztec', 'tornado', 'railgun',
+    'starknet', 'mina', 'aleo', 'penumbra', 'namada', 'anoma', 'firo', 'dash',
+    'cypherpunk', 'encryption', 'cryptography', 'hash', 'proof', 'protocol',
+    'layer 2', 'l2', 'rollup', 'scaling', 'consensus', 'mining', 'staking',
+    'token', 'coin', 'digital currency', 'cbdc', 'regulation', 'compliance'
+  ];
+
+  const lowerTopic = memoTopic.toLowerCase();
+  const hasRelevantKeyword = relevantKeywords.some(kw => lowerTopic.includes(kw));
+
+  // If obvious keyword match, do quick approval
+  if (hasRelevantKeyword) {
+    return {
+      isRelevant: true,
+      confidence: 0.9,
+      reason: "Topic contains relevant keywords related to privacy/ZK/crypto",
+      suggestedCategory: "crypto-privacy"
+    };
+  }
+
+  // Use Gemini to evaluate less obvious topics
+  const prompt = `You are a content filter for a privacy-focused crypto bot called "Zeke" that specializes in:
+- Zcash and ZEC cryptocurrency
+- Zero-knowledge proofs (ZK, zkSNARKs, zkSTARKs)
+- Privacy technology and cryptography
+- Blockchain privacy solutions
+- Financial privacy and surveillance
+- Cypherpunk philosophy
+- Cryptocurrency regulations affecting privacy
+- Self-custody and wallet security
+- DeFi privacy solutions
+
+Evaluate if this question/topic is RELEVANT for Zeke to analyze:
+"${memoTopic}"
+
+Respond in JSON format:
+{
+  "isRelevant": true/false,
+  "confidence": 0.0-1.0,
+  "reason": "Brief explanation",
+  "suggestedCategory": "category if relevant, null if not"
+}
+
+REJECT topics about:
+- General life advice unrelated to crypto
+- Celebrity gossip
+- Sports, entertainment, movies
+- Personal relationship advice
+- Cooking, recipes, health tips
+- Random trivia unrelated to tech/crypto
+- Offensive or inappropriate content
+- Spam or gibberish
+
+ACCEPT topics about:
+- Anything related to cryptocurrency, blockchain, or DeFi
+- Privacy technology, encryption, security
+- Financial systems, monetary policy (if related to crypto)
+- Technology, software, programming (if related to crypto/privacy)
+- Regulations affecting crypto or privacy
+- Comparisons between privacy solutions`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const result = JSON.parse(response.text ?? "{}");
+    
+    return {
+      isRelevant: result.isRelevant ?? false,
+      confidence: result.confidence ?? 0,
+      reason: result.reason ?? "Could not determine relevance",
+      suggestedCategory: result.suggestedCategory
+    };
+  } catch (error) {
+    console.error("Error checking topic relevance:", error);
+    // Default to rejecting if we can't determine relevance
+    return {
+      isRelevant: false,
+      confidence: 0,
+      reason: "Error during relevance check"
+    };
+  }
+}
+
+/**
  * Follow a redirect URL to get the actual destination
  */
 async function resolveRedirectUrl(redirectUrl: string): Promise<string> {
