@@ -1,30 +1,29 @@
-# 🔐 ZEKE - Privacy Bot & Shielded Paid Posts
+# 🔐 ZEKE - Privacy Bot with Shielded Memo Analytics
 
-A privacy-focused platform with two components:
-1. **Twitter Bot**: AI-powered privacy advocacy posts using Gemini 3.0
-2. **Shielded Paid Posts**: Pay with shielded ZEC to trigger on-demand analysis posts
+An AI-powered privacy advocacy bot on X (Twitter) with a unique feature: **pay with shielded ZEC to request on-demand analysis posts**.
 
 Built for the [Zypherpunk Hackathon](https://zypherpunk.com) - "Build the Machinery of Freedom"
 
 ## 🚀 Features
 
-### Twitter Bot
-- **AI-Powered Text Generation**: Uses Gemini 3.0 to create engaging tweets about privacy technology
+### Automated Privacy Content
+- **AI-Powered Tweets**: Uses Gemini 3.0 to create engaging posts about privacy technology
 - **AI-Generated Images**: Uses Google's Imagen to create visuals with the Zeke mascot
 - **ZK News Posts**: Automated news about zero-knowledge technology using Google Search
 - **10+ Post Types**: Tips, facts, predictions, hot takes, quotes, shoutouts, recommendations, and more
 
-### Shielded Paid Posts
+### Shielded Memo Analytics
 - **Pay with Shielded ZEC**: Send a shielded transaction with your topic in the memo
-- **On-Demand Analysis**: Your memo topic triggers a public analysis post
-- **Pure Node.js Light Client**: Connects to lightwalletd via gRPC - no Rust required
+- **On-Demand Analysis**: Your memo topic triggers a public analysis tweet on X
 - **Privacy-First**: Your payment and identity remain shielded, only the insight goes public
+- **Topic Filtering**: AI validates topics are relevant to ZK/privacy/crypto
 
 ## 📋 Prerequisites
 
 - Node.js 18+
 - Google AI API Key (for Gemini)
-- For Live Mode: Zcash Incoming Viewing Key (IVK)
+- Twitter/X API credentials
+- Zcash wallet seed phrase (for receiving payments)
 
 ## 🛠️ Setup
 
@@ -41,111 +40,136 @@ npm install
 Create a `.env` file:
 
 ```env
-# Required: Google AI
+# =============================================================================
+# GOOGLE AI (required)
+# =============================================================================
 GOOGLE_AI_API_KEY=your_google_ai_api_key_here
 
-# Twitter Bot (Optional)
+# =============================================================================
+# TWITTER/X API (required for posting)
+# =============================================================================
 X_API_KEY=your_x_api_key
 X_API_SECRET=your_x_api_secret
 X_ACCESS_TOKEN=your_x_access_token
 X_ACCESS_SECRET=your_x_access_secret
-MODE=local
 
-# Shielded Paid Posts (for --live mode)
-ZCASH_VIEWING_KEY=your_32_byte_hex_ivk
-LIGHTWALLETD_URL=mainnet.lightwalletd.com:9067
+# =============================================================================
+# ZCASH SHIELDED MESSAGES (for paid analysis feature)
+# =============================================================================
+# Your 24-word seed phrase (keep this SECRET!)
+ZCASH_SEED_PHRASE="word1 word2 word3 ... word24"
+
+# Block height when wallet was created (speeds up initial sync)
+ZCASH_WALLET_BIRTHDAY=3163243
+
+# Network: mainnet or testnet
 ZCASH_NETWORK=mainnet
+
+# Lightwalletd server
+LIGHTWALLETD_URL=https://zec.rocks:443
+
+# Minimum ZEC payment to trigger analysis (default: 0.001)
 MIN_PAYMENT_ZEC=0.001
-POLL_INTERVAL=30000
+
+# =============================================================================
+# INTERVALS
+# =============================================================================
+# How often to post tweets (hours)
+POST_INTERVAL_HOURS=2
+
+# How often to check for Zcash payments (seconds)
+ZCASH_POLL_INTERVAL=60
+
+# =============================================================================
+# MODE
+# =============================================================================
+MODE=production
 ```
 
 ## 🎮 Usage
 
-### Twitter Bot
+### Run the Bot
 
 ```bash
-# Generate tweet locally
+# Local testing (generates content without posting)
 npm run dev
 
-# Post to X (production)
+# Production (posts to X + monitors Zcash payments)
 npm start
 ```
 
-### Shielded Paid Posts
+### Docker
 
 ```bash
-# Interactive mode - type topics manually
-npm run blog
-
-# Demo mode - generate sample posts
-npm run blog:demo
-
-# Watch mode - file-based simulation
-npm run blog:watch
-
-# LIVE mode - real Zcash network
-npm run blog:live
+# Build and run with Docker Compose
+docker-compose up zeke
 ```
 
-#### Live Mode with Real ZEC
+## 💸 How to Request an Analysis
 
-1. **Export your Incoming Viewing Key** from Zashi or Ywallet
-2. **Add to .env**: `ZCASH_VIEWING_KEY=your_ivk_hex`
-3. **Run**: `npm run blog:live`
-4. **Send shielded ZEC** with your topic in the memo field
-5. **Analysis post generated** automatically
+### Step 1: Get ZEKE's Receiving Address
 
-```bash
-# Start from a specific block height
-npm run blog:live -- --start=2500000
-```
-
-## 📁 Project Structure
+When ZEKE starts, it displays the wallet address:
 
 ```
-zeke/
-├── src/
-│   ├── index.ts              # Twitter bot entry point
-│   ├── blog.ts               # Shielded paid posts entry point
-│   ├── types.ts              # TypeScript types
-│   ├── config/
-│   │   └── topics.ts         # Privacy topics & prompts
-│   ├── crypto/
-│   │   └── sapling.ts        # Sapling note decryption (pure JS)
-│   └── services/
-│       ├── gemini.ts         # Gemini text generation
-│       ├── imagen.ts         # Imagen image generation
-│       ├── twitter.ts        # X/Twitter posting
-│       ├── zcash.ts          # Zcash wallet (demo mode)
-│       ├── lightclient.ts    # Zcash light client (live mode)
-│       └── blog.ts           # Post generation
-├── proto/                    # Lightwalletd gRPC protos
-├── test/                     # Twitter bot test output
-├── testBlog/                 # Generated posts output
-└── package.json
+📬 Send ZEC with memo to request analysis:
+   u1hrc63764stp5k5e7mcxfwwupuyxte6cvt3p7p5p8x5l3p90shhnafwvey2a4n3epwuy0mcwxwed2j0n0vedjdrygerqkx4ayvqdx490q
 ```
 
-## 🔒 How Shielded Paid Posts Work
+### Step 2: Send Shielded ZEC with Your Topic
+
+Using **Zashi**, **YWallet**, or any shielded-capable wallet:
+
+1. Open your wallet
+2. Tap **Send**
+3. Enter ZEKE's **Unified Address**
+4. Enter amount: **minimum 0.001 ZEC**
+5. Add a **Memo** with your topic:
+   - `"What is your opinion about Starknet?"`
+   - `"Explain how zero-knowledge proofs work"`
+   - `"The future of privacy in AI"`
+6. Send the transaction
+
+### Step 3: Analysis Gets Posted to X
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  SHIELDED PAID POSTS FLOW                   │
+│  1. Your shielded payment is sent (identity hidden)         │
+│  2. ZEKE detects the transaction via Zingo CLI              │
+│  3. Decrypts the memo using wallet keys                     │
+│  4. Checks topic relevance (ZK, privacy, crypto)            │
+│  5. Gemini AI generates analysis + image                    │
+│  6. Posts to X: "🔍 A ZK paid memo asks: [topic]"           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Your payment and identity stay shielded—only the insight goes public!**
+
+## 🔒 How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 SHIELDED MEMO ANALYTICS FLOW                │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  1. User sends shielded ZEC with topic in memo              │
-│     └── Payment is private, identity is shielded            │
+│  User sends shielded ZEC with topic in memo                 │
+│  └── Payment is private, identity is shielded              │
 │                                                             │
-│  2. ZEKE light client syncs via lightwalletd                │
-│     └── Pure Node.js - gRPC + Jubjub crypto                 │
+│  ZEKE monitors via Zingo CLI + lightwalletd                 │
+│  └── Syncs with Zcash blockchain every 60 seconds          │
 │                                                             │
-│  3. Trial decrypts outputs using viewing key                │
-│     └── Only ZEKE can see transactions sent to it           │
+│  Decrypts incoming transactions automatically               │
+│  └── Only ZEKE can see transactions sent to it             │
 │                                                             │
-│  4. Extracts memo (topic request) from decrypted note       │
+│  Extracts memo (topic request) from transaction             │
 │                                                             │
-│  5. Generates analysis post with Gemini AI                  │
+│  Validates topic is relevant to ZK/privacy/crypto           │
+│  └── Off-topic requests are politely declined              │
 │                                                             │
-│  6. Publishes public insight - pay privately, get public    │
+│  Generates analysis with Gemini AI + image                  │
+│                                                             │
+│  Posts to X with attribution                                │
+│  └── "🔍 A ZK paid memo asks: [topic]"                     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -164,35 +188,69 @@ The bot covers themes including:
 
 ## 🔧 Technical Details
 
-### Pure Node.js Zcash Light Client
+### Zingo CLI Integration
 
-The light client is implemented entirely in TypeScript/Node.js:
-
-- **gRPC**: Connects to lightwalletd using `@grpc/grpc-js`
-- **Jubjub Curve**: Elliptic curve operations for key agreement
-- **ChaCha20-Poly1305**: Note decryption using `@noble/ciphers`
-- **Blake2b**: Key derivation using `@noble/hashes`
-
-No Rust, no WASM, no CLI tools required!
-
-### Shielded Memo Analytics
-
-Under the hood, ZEKE decodes shielded memos using viewing keys and transforms them into AI-generated content—analysis posts and insights—without ever compromising transaction privacy. It turns the memo field into a privacy-preserving signal layer, surfacing what the community cares about while keeping individual identities shielded.
+Production uses [Zingo CLI](https://github.com/zingolabs/zingo-cli) for full wallet functionality:
+- Transaction detection and decryption
+- Memo extraction from shielded outputs
+- Balance monitoring
+- Automatic sync with lightwalletd
 
 ### Lightwalletd Servers
 
 | Network | Server |
 |---------|--------|
-| Mainnet | `mainnet.lightwalletd.com:9067` |
+| Mainnet | `zec.rocks:443` |
 | Mainnet (backup) | `na.lightwalletd.com:9067` |
 | Testnet | `lightwalletd.testnet.electriccoin.co:9067` |
 
+## 🚀 Deploying to Railway
+
+### 1. Set Environment Variables
+
+In Railway dashboard or via CLI:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `GOOGLE_AI_API_KEY` | Google AI API key | `AIza...` |
+| `X_API_KEY` | Twitter API key | `pKqt...` |
+| `X_API_SECRET` | Twitter API secret | `dWej...` |
+| `X_ACCESS_TOKEN` | Twitter access token | `1994...` |
+| `X_ACCESS_SECRET` | Twitter access secret | `XPBL...` |
+| `ZCASH_SEED_PHRASE` | 24-word wallet seed | `"word1 word2..."` |
+| `ZCASH_WALLET_BIRTHDAY` | Block height when wallet created | `3163243` |
+| `ZCASH_NETWORK` | Network to use | `mainnet` |
+| `LIGHTWALLETD_URL` | Lightwalletd server | `https://zec.rocks:443` |
+| `MIN_PAYMENT_ZEC` | Minimum payment | `0.001` |
+| `POST_INTERVAL_HOURS` | Tweet interval | `2` |
+| `ZCASH_POLL_INTERVAL` | Payment check interval (seconds) | `60` |
+
+### 2. Deploy
+
+```bash
+railway up
+```
+
+Or push to GitHub - Railway will auto-deploy.
+
+### 3. Verify Deployment
+
+Check logs for:
+```
+🚀 ZEKE Bot starting in continuous mode...
+📬 Send ZEC with memo to request analysis:
+   u1...  (your wallet address)
+💤 Polling for payments every 60s...
+```
+
+**Note**: First build takes ~15-20 minutes (compiles Zingo CLI from Rust source).
+
 ## ⚠️ Important Notes
 
-- Always test with demo mode first
-- Keep your viewing key secure
-- The viewing key can only see incoming transactions, not spend funds
+- **Keep your seed phrase SECRET** - anyone with it can spend your funds
+- The initial Zcash sync may take several minutes
 - Minimum payment is 0.001 ZEC by default
+- Off-topic requests are rejected (must be ZK/privacy/crypto related)
 
 ## 📄 License
 
